@@ -28,6 +28,8 @@ data class ThemeState(
     val textColorIndex: Int,
     val clock24h: Boolean,
     val useFahrenheit: Boolean,
+    val textAlign: String,
+    val verticalLayout: String,
 )
 
 sealed class WeatherState {
@@ -60,12 +62,18 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             textColorIndex = prefs.textColorIndex,
             clock24h = prefs.clock24h,
             useFahrenheit = prefs.useFahrenheit,
+            textAlign = prefs.textAlign,
+            verticalLayout = prefs.verticalLayout,
         )
     )
     val themeState: StateFlow<ThemeState> = _themeState.asStateFlow()
 
     private val _weatherState = MutableStateFlow<WeatherState>(WeatherState.Idle)
     val weatherState: StateFlow<WeatherState> = _weatherState.asStateFlow()
+
+    private var lastLat = Double.NaN
+    private var lastLon = Double.NaN
+    var weatherPermissionDenied = false
 
     init {
         loadApps()
@@ -199,12 +207,27 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         _weatherState.value = WeatherState.Idle
     }
 
-    fun fetchWeather(lat: Double, lon: Double) {
-        if (_weatherState.value is WeatherState.Loading) return
+    fun setTextAlign(value: String) {
+        prefs.textAlign = value
+        _themeState.value = _themeState.value.copy(textAlign = value)
+    }
+
+    fun setVerticalLayout(value: String) {
+        prefs.verticalLayout = value
+        _themeState.value = _themeState.value.copy(verticalLayout = value)
+    }
+
+    fun updateLocation(lat: Double, lon: Double) {
+        lastLat = lat
+        lastLon = lon
+    }
+
+    fun fetchWeather() {
+        if (lastLat.isNaN() || _weatherState.value is WeatherState.Loading) return
         _weatherState.value = WeatherState.Loading
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                val data = WeatherRepository.fetch(lat, lon, prefs.useFahrenheit)
+                val data = WeatherRepository.fetch(lastLat, lastLon, prefs.useFahrenheit)
                 _weatherState.value = WeatherState.Ready(data.temp, data.condition, data.isFahrenheit)
             } catch (_: Exception) {
                 _weatherState.value = WeatherState.Error
@@ -212,7 +235,20 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    fun setWeatherError() { _weatherState.value = WeatherState.Error }
+    fun refreshWeather() {
+        if (lastLat.isNaN()) return
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val data = WeatherRepository.fetch(lastLat, lastLon, prefs.useFahrenheit)
+                _weatherState.value = WeatherState.Ready(data.temp, data.condition, data.isFahrenheit)
+            } catch (_: Exception) { /* keep existing Ready state on transient error */ }
+        }
+    }
+
+    fun setWeatherError() {
+        weatherPermissionDenied = true
+        _weatherState.value = WeatherState.Error
+    }
 
     fun filteredApps(): List<AppInfo> {
         val q = _drawerQuery.value.trim().lowercase()

@@ -11,18 +11,20 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import com.sparse.launcher.ui.theme.dimContent
 import java.time.LocalDate
 import java.time.LocalTime
@@ -39,7 +41,6 @@ fun HomeScreen(vm: LauncherViewModel) {
 
     var time by remember { mutableStateOf(currentTimeStr(theme.clock24h)) }
     var date by remember { mutableStateOf(currentDateStr()) }
-
     LaunchedEffect(theme.clock24h) {
         while (true) {
             time = currentTimeStr(theme.clock24h)
@@ -48,29 +49,46 @@ fun HomeScreen(vm: LauncherViewModel) {
         }
     }
 
-    // Location permission + weather fetch
+    val horizAlign = theme.textAlign.toColumnAlign()
+    val composeTextAlign = theme.textAlign.toTextAlign()
+    val vertArrangement = theme.verticalLayout.toArrangement()
+
+    // Permission launcher — used only on first ask
     val permLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { perms ->
         if (perms.values.any { it }) {
-            getLastLocation(ctx)?.let { (lat, lon) -> vm.fetchWeather(lat, lon) }
-                ?: vm.setWeatherError()
+            getLastLocation(ctx)?.let { (lat, lon) ->
+                vm.updateLocation(lat, lon)
+                vm.fetchWeather()
+            } ?: vm.setWeatherError()
         } else {
             vm.setWeatherError()
         }
     }
 
-    LaunchedEffect(weatherState) {
-        if (weatherState !is WeatherState.Idle) return@LaunchedEffect
-        val granted = hasLocationPermission(ctx)
-        if (granted) {
-            getLastLocation(ctx)?.let { (lat, lon) -> vm.fetchWeather(lat, lon) }
-                ?: vm.setWeatherError()
-        } else {
+    // First-time: request permission or fetch
+    LaunchedEffect(Unit) {
+        if (hasLocationPermission(ctx)) {
+            getLastLocation(ctx)?.let { (lat, lon) ->
+                vm.updateLocation(lat, lon)
+                vm.fetchWeather()
+            } ?: vm.setWeatherError()
+        } else if (!vm.weatherPermissionDenied) {
             permLauncher.launch(arrayOf(
                 Manifest.permission.ACCESS_FINE_LOCATION,
                 Manifest.permission.ACCESS_COARSE_LOCATION,
             ))
+        }
+    }
+
+    // Refresh on every resume (repo cache prevents over-fetching)
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        if (hasLocationPermission(ctx)) {
+            getLastLocation(ctx)?.let { (lat, lon) ->
+                vm.updateLocation(lat, lon)
+                vm.refreshWeather()
+            }
         }
     }
 
@@ -88,35 +106,48 @@ fun HomeScreen(vm: LauncherViewModel) {
             modifier = Modifier
                 .fillMaxSize()
                 .padding(horizontal = 32.dp, vertical = 64.dp),
-            verticalArrangement = Arrangement.SpaceBetween,
+            verticalArrangement = vertArrangement,
+            horizontalAlignment = horizAlign,
         ) {
-            Column {
+            // Clock / date / weather block
+            Column(horizontalAlignment = horizAlign) {
                 Text(
                     text = time,
                     fontSize = 72.sp,
                     fontWeight = FontWeight.Light,
                     color = MaterialTheme.colorScheme.onBackground,
                     lineHeight = 76.sp,
+                    textAlign = composeTextAlign,
+                    modifier = Modifier.fillMaxWidth(),
                 )
                 Text(
                     text = date,
                     fontSize = 16.sp,
                     color = MaterialTheme.dimContent,
-                    modifier = Modifier.padding(top = 4.dp),
+                    textAlign = composeTextAlign,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 4.dp),
                 )
-                WeatherLine(weatherState)
+                WeatherLine(weatherState, composeTextAlign)
             }
 
-            LazyColumn(
+            // Gap between clock block and apps (not needed for spread — SpaceBetween handles it)
+            if (theme.verticalLayout != "spread") {
+                Spacer(Modifier.height(40.dp))
+            }
+
+            // Pinned apps
+            Column(
                 verticalArrangement = Arrangement.spacedBy(20.dp),
-                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = horizAlign,
             ) {
-                items(pinnedApps, key = { it.packageName }) { app ->
+                pinnedApps.forEach { app ->
                     Text(
                         text = app.displayLabel,
                         fontSize = 18.sp,
-                        fontWeight = FontWeight.Normal,
                         color = MaterialTheme.colorScheme.onBackground,
+                        textAlign = composeTextAlign,
                         modifier = Modifier
                             .fillMaxWidth()
                             .combinedClickable(
@@ -132,19 +163,38 @@ fun HomeScreen(vm: LauncherViewModel) {
 }
 
 @Composable
-private fun WeatherLine(state: WeatherState) {
-    when (state) {
-        is WeatherState.Ready -> {
-            val unit = if (state.isFahrenheit) "°F" else "°C"
-            Text(
-                text = "${state.temp}$unit  ${state.condition}",
-                fontSize = 15.sp,
-                color = MaterialTheme.dimContent,
-                modifier = Modifier.padding(top = 6.dp),
-            )
-        }
-        else -> {}
+private fun WeatherLine(state: WeatherState, textAlign: TextAlign) {
+    if (state is WeatherState.Ready) {
+        val unit = if (state.isFahrenheit) "°F" else "°C"
+        Text(
+            text = "${state.temp}$unit  ${state.condition}",
+            fontSize = 15.sp,
+            color = MaterialTheme.dimContent,
+            textAlign = textAlign,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 6.dp),
+        )
     }
+}
+
+private fun String.toColumnAlign(): Alignment.Horizontal = when (this) {
+    "center" -> Alignment.CenterHorizontally
+    "right" -> Alignment.End
+    else -> Alignment.Start
+}
+
+private fun String.toTextAlign(): TextAlign = when (this) {
+    "center" -> TextAlign.Center
+    "right" -> TextAlign.End
+    else -> TextAlign.Start
+}
+
+private fun String.toArrangement(): Arrangement.Vertical = when (this) {
+    "top" -> Arrangement.Top
+    "center" -> Arrangement.Center
+    "bottom" -> Arrangement.Bottom
+    else -> Arrangement.SpaceBetween
 }
 
 private fun currentTimeStr(clock24h: Boolean): String {

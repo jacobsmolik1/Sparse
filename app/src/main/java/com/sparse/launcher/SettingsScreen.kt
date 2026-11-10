@@ -94,6 +94,35 @@ fun SettingsScreen(vm: LauncherViewModel) {
             }
         }
 
+        // Text alignment
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            SectionLabel("text alignment")
+            Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
+                listOf("left", "center", "right").forEach { opt ->
+                    ClockFormatOption(label = opt, selected = theme.textAlign == opt) {
+                        vm.setTextAlign(opt)
+                    }
+                }
+            }
+        }
+
+        // Vertical layout
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            SectionLabel("vertical layout")
+            Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
+                listOf("spread", "top", "center", "bottom").forEach { opt ->
+                    ClockFormatOption(label = opt, selected = theme.verticalLayout == opt) {
+                        vm.setVerticalLayout(opt)
+                    }
+                }
+            }
+            Text(
+                "spread: clock top, apps bottom",
+                fontSize = 12.sp,
+                color = MaterialTheme.dimContent,
+            )
+        }
+
         // Background color
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             SectionLabel("background")

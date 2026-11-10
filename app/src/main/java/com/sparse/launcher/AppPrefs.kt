@@ -36,6 +36,16 @@ class AppPrefs(context: Context) {
         get() = prefs.getBoolean(KEY_TEMP_UNIT, true)
         set(value) = prefs.edit().putBoolean(KEY_TEMP_UNIT, value).apply()
 
+    // "left" | "center" | "right"
+    var textAlign: String
+        get() = prefs.getString(KEY_TEXT_ALIGN, "left") ?: "left"
+        set(value) = prefs.edit().putString(KEY_TEXT_ALIGN, value).apply()
+
+    // "spread" | "top" | "center" | "bottom"
+    var verticalLayout: String
+        get() = prefs.getString(KEY_VERTICAL_LAYOUT, "spread") ?: "spread"
+        set(value) = prefs.edit().putString(KEY_VERTICAL_LAYOUT, value).apply()
+
     var bgColorIndex: Int
         get() = prefs.getInt(KEY_BG_COLOR, 0)
         set(value) = prefs.edit().putInt(KEY_BG_COLOR, value).apply()
@@ -65,5 +75,7 @@ class AppPrefs(context: Context) {
         private const val KEY_BG_COLOR = "bg_color_index"
         private const val KEY_TEXT_COLOR = "text_color_index"
         private const val KEY_TEMP_UNIT = "temp_fahrenheit"
+        private const val KEY_TEXT_ALIGN = "text_align"
+        private const val KEY_VERTICAL_LAYOUT = "vertical_layout"
     }
 }
