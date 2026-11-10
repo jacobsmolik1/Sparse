@@ -32,6 +32,10 @@ class AppPrefs(context: Context) {
         get() = prefs.getBoolean(KEY_CLOCK_24H, true)
         set(value) = prefs.edit().putBoolean(KEY_CLOCK_24H, value).apply()
 
+    var useFahrenheit: Boolean
+        get() = prefs.getBoolean(KEY_TEMP_UNIT, true)
+        set(value) = prefs.edit().putBoolean(KEY_TEMP_UNIT, value).apply()
+
     var bgColorIndex: Int
         get() = prefs.getInt(KEY_BG_COLOR, 0)
         set(value) = prefs.edit().putInt(KEY_BG_COLOR, value).apply()
@@ -60,5 +64,6 @@ class AppPrefs(context: Context) {
         private const val KEY_CLOCK_24H = "clock_24h"
         private const val KEY_BG_COLOR = "bg_color_index"
         private const val KEY_TEXT_COLOR = "text_color_index"
+        private const val KEY_TEMP_UNIT = "temp_fahrenheit"
     }
 }

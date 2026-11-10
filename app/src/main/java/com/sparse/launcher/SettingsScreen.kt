@@ -78,6 +78,22 @@ fun SettingsScreen(vm: LauncherViewModel) {
             }
         }
 
+        // Temperature unit
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            SectionLabel("temperature")
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(24.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                ClockFormatOption(label = "°F", selected = theme.useFahrenheit) {
+                    vm.setUseFahrenheit(true)
+                }
+                ClockFormatOption(label = "°C", selected = !theme.useFahrenheit) {
+                    vm.setUseFahrenheit(false)
+                }
+            }
+        }
+
         // Background color
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             SectionLabel("background")

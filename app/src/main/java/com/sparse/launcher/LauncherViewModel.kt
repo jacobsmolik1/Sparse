@@ -27,7 +27,15 @@ data class ThemeState(
     val bgColorIndex: Int,
     val textColorIndex: Int,
     val clock24h: Boolean,
+    val useFahrenheit: Boolean,
 )
+
+sealed class WeatherState {
+    object Idle : WeatherState()
+    object Loading : WeatherState()
+    data class Ready(val temp: Int, val condition: String, val isFahrenheit: Boolean) : WeatherState()
+    object Error : WeatherState()
+}
 
 class LauncherViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -51,9 +59,13 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             bgColorIndex = prefs.bgColorIndex,
             textColorIndex = prefs.textColorIndex,
             clock24h = prefs.clock24h,
+            useFahrenheit = prefs.useFahrenheit,
         )
     )
     val themeState: StateFlow<ThemeState> = _themeState.asStateFlow()
+
+    private val _weatherState = MutableStateFlow<WeatherState>(WeatherState.Idle)
+    val weatherState: StateFlow<WeatherState> = _weatherState.asStateFlow()
 
     init {
         loadApps()
@@ -179,6 +191,28 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         prefs.clock24h = value
         _themeState.value = _themeState.value.copy(clock24h = value)
     }
+
+    fun setUseFahrenheit(value: Boolean) {
+        prefs.useFahrenheit = value
+        WeatherRepository.invalidate()
+        _themeState.value = _themeState.value.copy(useFahrenheit = value)
+        _weatherState.value = WeatherState.Idle
+    }
+
+    fun fetchWeather(lat: Double, lon: Double) {
+        if (_weatherState.value is WeatherState.Loading) return
+        _weatherState.value = WeatherState.Loading
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val data = WeatherRepository.fetch(lat, lon, prefs.useFahrenheit)
+                _weatherState.value = WeatherState.Ready(data.temp, data.condition, data.isFahrenheit)
+            } catch (_: Exception) {
+                _weatherState.value = WeatherState.Error
+            }
+        }
+    }
+
+    fun setWeatherError() { _weatherState.value = WeatherState.Error }
 
     fun filteredApps(): List<AppInfo> {
         val q = _drawerQuery.value.trim().lowercase()

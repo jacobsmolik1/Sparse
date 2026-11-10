@@ -1,6 +1,12 @@
 package com.sparse.launcher
 
+import android.Manifest
+import android.annotation.SuppressLint
 import android.content.Context
+import android.content.pm.PackageManager
+import android.location.LocationManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
@@ -16,6 +22,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import com.sparse.launcher.ui.theme.dimContent
 import java.time.LocalDate
 import java.time.LocalTime
@@ -28,6 +35,7 @@ fun HomeScreen(vm: LauncherViewModel) {
     val ctx = LocalContext.current
     val pinnedApps by vm.pinnedApps.collectAsState()
     val theme by vm.themeState.collectAsState()
+    val weatherState by vm.weatherState.collectAsState()
 
     var time by remember { mutableStateOf(currentTimeStr(theme.clock24h)) }
     var date by remember { mutableStateOf(currentDateStr()) }
@@ -37,6 +45,32 @@ fun HomeScreen(vm: LauncherViewModel) {
             time = currentTimeStr(theme.clock24h)
             date = currentDateStr()
             delay(10_000)
+        }
+    }
+
+    // Location permission + weather fetch
+    val permLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { perms ->
+        if (perms.values.any { it }) {
+            getLastLocation(ctx)?.let { (lat, lon) -> vm.fetchWeather(lat, lon) }
+                ?: vm.setWeatherError()
+        } else {
+            vm.setWeatherError()
+        }
+    }
+
+    LaunchedEffect(weatherState) {
+        if (weatherState !is WeatherState.Idle) return@LaunchedEffect
+        val granted = hasLocationPermission(ctx)
+        if (granted) {
+            getLastLocation(ctx)?.let { (lat, lon) -> vm.fetchWeather(lat, lon) }
+                ?: vm.setWeatherError()
+        } else {
+            permLauncher.launch(arrayOf(
+                Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.ACCESS_COARSE_LOCATION,
+            ))
         }
     }
 
@@ -70,6 +104,7 @@ fun HomeScreen(vm: LauncherViewModel) {
                     color = MaterialTheme.dimContent,
                     modifier = Modifier.padding(top = 4.dp),
                 )
+                WeatherLine(weatherState)
             }
 
             LazyColumn(
@@ -96,6 +131,22 @@ fun HomeScreen(vm: LauncherViewModel) {
     }
 }
 
+@Composable
+private fun WeatherLine(state: WeatherState) {
+    when (state) {
+        is WeatherState.Ready -> {
+            val unit = if (state.isFahrenheit) "°F" else "°C"
+            Text(
+                text = "${state.temp}$unit  ${state.condition}",
+                fontSize = 15.sp,
+                color = MaterialTheme.dimContent,
+                modifier = Modifier.padding(top = 6.dp),
+            )
+        }
+        else -> {}
+    }
+}
+
 private fun currentTimeStr(clock24h: Boolean): String {
     val pattern = if (clock24h) "HH:mm" else "h:mm a"
     return LocalTime.now().format(DateTimeFormatter.ofPattern(pattern))
@@ -103,6 +154,23 @@ private fun currentTimeStr(clock24h: Boolean): String {
 
 private fun currentDateStr(): String =
     LocalDate.now().format(DateTimeFormatter.ofPattern("EEE, MMM d"))
+
+private fun hasLocationPermission(ctx: Context): Boolean =
+    ContextCompat.checkSelfPermission(ctx, Manifest.permission.ACCESS_COARSE_LOCATION) ==
+        PackageManager.PERMISSION_GRANTED
+
+@SuppressLint("MissingPermission")
+private fun getLastLocation(ctx: Context): Pair<Double, Double>? {
+    val lm = ctx.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+    return listOf(
+        LocationManager.GPS_PROVIDER,
+        LocationManager.NETWORK_PROVIDER,
+        LocationManager.PASSIVE_PROVIDER,
+    )
+        .mapNotNull { runCatching { lm.getLastKnownLocation(it) }.getOrNull() }
+        .maxByOrNull { it.time }
+        ?.let { it.latitude to it.longitude }
+}
 
 private fun expandNotifications(ctx: Context) {
     try {
