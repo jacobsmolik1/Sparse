@@ -19,7 +19,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.sparse.launcher.ui.theme.OnBackgroundDim
+import com.sparse.launcher.ui.theme.dimContent
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -62,7 +62,7 @@ fun DrawerScreen(vm: LauncherViewModel) {
                     Text(
                         "search apps",
                         fontSize = 20.sp,
-                        color = OnBackgroundDim,
+                        color = MaterialTheme.dimContent,
                         fontWeight = FontWeight.Light,
                     )
                 }

@@ -6,6 +6,8 @@ import android.content.pm.PackageManager
 import android.content.pm.ResolveInfo
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.sparse.launcher.ui.theme.BG_COLORS
+import com.sparse.launcher.ui.theme.TEXT_COLORS
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -16,9 +18,16 @@ sealed class Screen {
     object Home : Screen()
     object Drawer : Screen()
     object Settings : Screen()
+    object ManageHomeApps : Screen()
     data class Gate(val app: AppInfo) : Screen()
     data class AppSettings(val app: AppInfo) : Screen()
 }
+
+data class ThemeState(
+    val bgColorIndex: Int,
+    val textColorIndex: Int,
+    val clock24h: Boolean,
+)
 
 class LauncherViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -36,6 +45,15 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
     private val _drawerQuery = MutableStateFlow("")
     val drawerQuery: StateFlow<String> = _drawerQuery.asStateFlow()
+
+    private val _themeState = MutableStateFlow(
+        ThemeState(
+            bgColorIndex = prefs.bgColorIndex,
+            textColorIndex = prefs.textColorIndex,
+            clock24h = prefs.clock24h,
+        )
+    )
+    val themeState: StateFlow<ThemeState> = _themeState.asStateFlow()
 
     init {
         loadApps()
@@ -63,33 +81,22 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    private fun refreshPinned(apps: List<AppInfo>) {
+    private fun refreshPinned(apps: List<AppInfo> = _allApps.value) {
         val pkgMap = apps.associateBy { it.packageName }
-        _pinnedApps.value = prefs.pinnedApps
-            .mapNotNull { pkgMap[it] }
+        _pinnedApps.value = prefs.pinnedApps.mapNotNull { pkgMap[it] }
     }
 
-    fun navigate(screen: Screen) {
-        _screen.value = screen
-    }
+    fun navigate(screen: Screen) { _screen.value = screen }
 
-    fun back() {
-        _screen.value = Screen.Home
-    }
+    fun back() { _screen.value = Screen.Home }
 
-    fun setDrawerQuery(q: String) {
-        _drawerQuery.value = q
-    }
+    fun setDrawerQuery(q: String) { _drawerQuery.value = q }
 
     fun launchApp(app: AppInfo) {
-        val ctx = getApplication<Application>()
         val isMindful = app.packageName in prefs.mindfulApps
         val isBlocked = prefs.focusModeEnabled && app.packageName in prefs.focusBlockedApps
-        if (isMindful || isBlocked) {
-            _screen.value = Screen.Gate(app)
-        } else {
-            doLaunch(app)
-        }
+        if (isMindful || isBlocked) _screen.value = Screen.Gate(app)
+        else doLaunch(app)
     }
 
     fun doLaunch(app: AppInfo) {
@@ -106,13 +113,35 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         if (packageName !in current) {
             current.add(packageName)
             prefs.pinnedApps = current
-            refreshPinned(_allApps.value)
+            refreshPinned()
         }
     }
 
     fun unpinApp(packageName: String) {
         prefs.pinnedApps = prefs.pinnedApps.filter { it != packageName }
-        refreshPinned(_allApps.value)
+        refreshPinned()
+    }
+
+    fun movePinnedUp(packageName: String) {
+        val list = prefs.pinnedApps.toMutableList()
+        val idx = list.indexOf(packageName)
+        if (idx > 0) {
+            list.removeAt(idx)
+            list.add(idx - 1, packageName)
+            prefs.pinnedApps = list
+            refreshPinned()
+        }
+    }
+
+    fun movePinnedDown(packageName: String) {
+        val list = prefs.pinnedApps.toMutableList()
+        val idx = list.indexOf(packageName)
+        if (idx in 0 until list.size - 1) {
+            list.removeAt(idx)
+            list.add(idx + 1, packageName)
+            prefs.pinnedApps = list
+            refreshPinned()
+        }
     }
 
     fun toggleMindful(packageName: String) {
@@ -136,9 +165,29 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         prefs.setDailyLimit(packageName, minutes)
     }
 
+    fun setBgColor(index: Int) {
+        prefs.bgColorIndex = index
+        _themeState.value = _themeState.value.copy(bgColorIndex = index)
+    }
+
+    fun setTextColor(index: Int) {
+        prefs.textColorIndex = index
+        _themeState.value = _themeState.value.copy(textColorIndex = index)
+    }
+
+    fun setClock24h(value: Boolean) {
+        prefs.clock24h = value
+        _themeState.value = _themeState.value.copy(clock24h = value)
+    }
+
     fun filteredApps(): List<AppInfo> {
         val q = _drawerQuery.value.trim().lowercase()
         return if (q.isBlank()) _allApps.value
         else _allApps.value.filter { it.displayLabel.lowercase().contains(q) }
+    }
+
+    fun unpinnedApps(): List<AppInfo> {
+        val pinned = prefs.pinnedApps.toSet()
+        return _allApps.value.filter { it.packageName !in pinned }
     }
 }

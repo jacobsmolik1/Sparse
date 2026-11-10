@@ -2,7 +2,6 @@ package com.sparse.launcher
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -13,10 +12,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.sparse.launcher.ui.theme.OnBackgroundDim
+import com.sparse.launcher.ui.theme.dimContent
 
 @Composable
 fun AppSettingsScreen(vm: LauncherViewModel, app: AppInfo) {
@@ -26,7 +24,6 @@ fun AppSettingsScreen(vm: LauncherViewModel, app: AppInfo) {
     var isMindful by remember { mutableStateOf(app.packageName in prefs.mindfulApps) }
     var isFocusBlocked by remember { mutableStateOf(app.packageName in prefs.focusBlockedApps) }
     var labelText by remember { mutableStateOf(prefs.getCustomLabel(app.packageName) ?: "") }
-    val dailyLimit = remember { mutableIntStateOf(prefs.getDailyLimit(app.packageName)) }
     val opensToday = remember { vm.usage.getOpensToday(app.packageName) }
 
     Column(
@@ -45,7 +42,7 @@ fun AppSettingsScreen(vm: LauncherViewModel, app: AppInfo) {
             Text(
                 text = app.packageName,
                 fontSize = 11.sp,
-                color = OnBackgroundDim,
+                color = MaterialTheme.dimContent,
                 modifier = Modifier.padding(top = 2.dp),
             )
         }
@@ -72,7 +69,7 @@ fun AppSettingsScreen(vm: LauncherViewModel, app: AppInfo) {
         ) {
             Column {
                 Text("mindful pause", fontSize = 16.sp, color = MaterialTheme.colorScheme.onBackground)
-                Text("3s delay before opening", fontSize = 12.sp, color = OnBackgroundDim)
+                Text("3s delay before opening", fontSize = 12.sp, color = MaterialTheme.dimContent)
             }
             Switch(
                 checked = isMindful,
@@ -90,7 +87,7 @@ fun AppSettingsScreen(vm: LauncherViewModel, app: AppInfo) {
         ) {
             Column {
                 Text("block in focus mode", fontSize = 16.sp, color = MaterialTheme.colorScheme.onBackground)
-                Text("blocked when focus is on", fontSize = 12.sp, color = OnBackgroundDim)
+                Text("blocked when focus is on", fontSize = 12.sp, color = MaterialTheme.dimContent)
             }
             Switch(
                 checked = isFocusBlocked,
@@ -102,7 +99,7 @@ fun AppSettingsScreen(vm: LauncherViewModel, app: AppInfo) {
         }
 
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text("custom label", fontSize = 14.sp, color = OnBackgroundDim)
+            Text("custom label", fontSize = 14.sp, color = MaterialTheme.dimContent)
             BasicTextField(
                 value = labelText,
                 onValueChange = { labelText = it },
@@ -115,7 +112,7 @@ fun AppSettingsScreen(vm: LauncherViewModel, app: AppInfo) {
                 modifier = Modifier.fillMaxWidth(),
                 decorationBox = { inner ->
                     if (labelText.isEmpty()) {
-                        Text(app.label, fontSize = 16.sp, color = OnBackgroundDim)
+                        Text(app.label, fontSize = 16.sp, color = MaterialTheme.dimContent)
                     }
                     inner()
                 },
@@ -125,7 +122,7 @@ fun AppSettingsScreen(vm: LauncherViewModel, app: AppInfo) {
         Text(
             text = "opened today: $opensToday",
             fontSize = 14.sp,
-            color = OnBackgroundDim,
+            color = MaterialTheme.dimContent,
         )
 
         Row(
@@ -133,7 +130,7 @@ fun AppSettingsScreen(vm: LauncherViewModel, app: AppInfo) {
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             TextButton(onClick = { vm.back() }) {
-                Text("cancel", color = OnBackgroundDim)
+                Text("cancel", color = MaterialTheme.dimContent)
             }
             TextButton(onClick = {
                 vm.setCustomLabel(app.packageName, labelText)

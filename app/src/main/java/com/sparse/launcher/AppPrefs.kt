@@ -8,9 +8,13 @@ class AppPrefs(context: Context) {
     private val prefs: SharedPreferences =
         context.getSharedPreferences("sparse_prefs", Context.MODE_PRIVATE)
 
+    // Stored as pipe-delimited string to preserve order
     var pinnedApps: List<String>
-        get() = prefs.getStringSet(KEY_PINNED, emptySet())!!.toList()
-        set(value) = prefs.edit().putStringSet(KEY_PINNED, value.toSet()).apply()
+        get() = prefs.getString(KEY_PINNED, "")
+            ?.split("|")
+            ?.filter { it.isNotBlank() }
+            ?: emptyList()
+        set(value) = prefs.edit().putString(KEY_PINNED, value.joinToString("|")).apply()
 
     var mindfulApps: Set<String>
         get() = prefs.getStringSet(KEY_MINDFUL, emptySet())!!
@@ -23,6 +27,18 @@ class AppPrefs(context: Context) {
     var focusBlockedApps: Set<String>
         get() = prefs.getStringSet(KEY_FOCUS_BLOCKED, emptySet())!!
         set(value) = prefs.edit().putStringSet(KEY_FOCUS_BLOCKED, value).apply()
+
+    var clock24h: Boolean
+        get() = prefs.getBoolean(KEY_CLOCK_24H, true)
+        set(value) = prefs.edit().putBoolean(KEY_CLOCK_24H, value).apply()
+
+    var bgColorIndex: Int
+        get() = prefs.getInt(KEY_BG_COLOR, 0)
+        set(value) = prefs.edit().putInt(KEY_BG_COLOR, value).apply()
+
+    var textColorIndex: Int
+        get() = prefs.getInt(KEY_TEXT_COLOR, 0)
+        set(value) = prefs.edit().putInt(KEY_TEXT_COLOR, value).apply()
 
     fun getDailyLimit(packageName: String): Int =
         prefs.getInt("limit_$packageName", 0)
@@ -37,9 +53,12 @@ class AppPrefs(context: Context) {
         prefs.edit().putString("label_$packageName", label).apply()
 
     companion object {
-        private const val KEY_PINNED = "pinned_apps"
+        private const val KEY_PINNED = "pinned_apps_ordered"
         private const val KEY_MINDFUL = "mindful_apps"
         private const val KEY_FOCUS = "focus_mode"
         private const val KEY_FOCUS_BLOCKED = "focus_blocked"
+        private const val KEY_CLOCK_24H = "clock_24h"
+        private const val KEY_BG_COLOR = "bg_color_index"
+        private const val KEY_TEXT_COLOR = "text_color_index"
     }
 }

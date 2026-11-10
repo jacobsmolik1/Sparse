@@ -12,7 +12,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.sparse.launcher.ui.theme.OnBackgroundDim
+import com.sparse.launcher.ui.theme.dimContent
 import kotlinx.coroutines.delay
 
 private const val GATE_SECONDS = 3
@@ -50,7 +50,7 @@ fun GateScreen(vm: LauncherViewModel, app: AppInfo) {
         Text(
             text = "opening in $secondsLeft…",
             fontSize = 14.sp,
-            color = OnBackgroundDim,
+            color = MaterialTheme.dimContent,
         )
 
         Spacer(Modifier.height(32.dp))
@@ -65,11 +65,7 @@ fun GateScreen(vm: LauncherViewModel, app: AppInfo) {
         Spacer(Modifier.height(40.dp))
 
         TextButton(onClick = { vm.back() }) {
-            Text(
-                "go back",
-                fontSize = 14.sp,
-                color = OnBackgroundDim,
-            )
+            Text("go back", fontSize = 14.sp, color = MaterialTheme.dimContent)
         }
     }
 }

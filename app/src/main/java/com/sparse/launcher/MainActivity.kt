@@ -7,15 +7,15 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.sparse.launcher.ui.theme.BG_COLORS
+import com.sparse.launcher.ui.theme.TEXT_COLORS
 import com.sparse.launcher.ui.theme.SparseTheme
 
 class MainActivity : ComponentActivity() {
@@ -24,14 +24,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            SparseTheme {
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background,
-                ) {
-                    SparseApp()
-                }
-            }
+            SparseApp()
         }
     }
 }
@@ -41,29 +34,39 @@ class MainActivity : ComponentActivity() {
 private fun SparseApp() {
     val vm: LauncherViewModel = viewModel()
     val screen by vm.screen.collectAsState()
+    val theme by vm.themeState.collectAsState()
 
-    BackHandler(enabled = screen != Screen.Home) {
-        vm.back()
-    }
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .run {
-                if (screen == Screen.Home) {
-                    combinedClickable(
-                        onClick = {},
-                        onLongClick = { vm.navigate(Screen.Settings) },
-                    )
-                } else this
-            }
+    SparseTheme(
+        bgColor = BG_COLORS[theme.bgColorIndex],
+        textColor = TEXT_COLORS[theme.textColorIndex],
     ) {
-        when (val s = screen) {
-            is Screen.Home -> HomeScreen(vm)
-            is Screen.Drawer -> DrawerScreen(vm)
-            is Screen.Settings -> SettingsScreen(vm)
-            is Screen.Gate -> GateScreen(vm, s.app)
-            is Screen.AppSettings -> AppSettingsScreen(vm, s.app)
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = MaterialTheme.colorScheme.background,
+        ) {
+            BackHandler(enabled = screen != Screen.Home) { vm.back() }
+
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .run {
+                        if (screen == Screen.Home) {
+                            combinedClickable(
+                                onClick = {},
+                                onLongClick = { vm.navigate(Screen.Settings) },
+                            )
+                        } else this
+                    }
+            ) {
+                when (val s = screen) {
+                    is Screen.Home -> HomeScreen(vm)
+                    is Screen.Drawer -> DrawerScreen(vm)
+                    is Screen.Settings -> SettingsScreen(vm)
+                    is Screen.ManageHomeApps -> ManageHomeAppsScreen(vm)
+                    is Screen.Gate -> GateScreen(vm, s.app)
+                    is Screen.AppSettings -> AppSettingsScreen(vm, s.app)
+                }
+            }
         }
     }
 }

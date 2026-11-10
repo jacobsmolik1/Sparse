@@ -1,7 +1,6 @@
 package com.sparse.launcher
 
 import android.content.Context
-import android.content.Intent
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
@@ -11,14 +10,13 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.sparse.launcher.ui.theme.OnBackgroundDim
+import com.sparse.launcher.ui.theme.dimContent
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
@@ -29,13 +27,14 @@ import kotlinx.coroutines.delay
 fun HomeScreen(vm: LauncherViewModel) {
     val ctx = LocalContext.current
     val pinnedApps by vm.pinnedApps.collectAsState()
+    val theme by vm.themeState.collectAsState()
 
-    var time by remember { mutableStateOf(currentTimeStr()) }
+    var time by remember { mutableStateOf(currentTimeStr(theme.clock24h)) }
     var date by remember { mutableStateOf(currentDateStr()) }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(theme.clock24h) {
         while (true) {
-            time = currentTimeStr()
+            time = currentTimeStr(theme.clock24h)
             date = currentDateStr()
             delay(10_000)
         }
@@ -68,7 +67,7 @@ fun HomeScreen(vm: LauncherViewModel) {
                 Text(
                     text = date,
                     fontSize = 16.sp,
-                    color = OnBackgroundDim,
+                    color = MaterialTheme.dimContent,
                     modifier = Modifier.padding(top = 4.dp),
                 )
             }
@@ -97,8 +96,10 @@ fun HomeScreen(vm: LauncherViewModel) {
     }
 }
 
-private fun currentTimeStr(): String =
-    LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm"))
+private fun currentTimeStr(clock24h: Boolean): String {
+    val pattern = if (clock24h) "HH:mm" else "h:mm a"
+    return LocalTime.now().format(DateTimeFormatter.ofPattern(pattern))
+}
 
 private fun currentDateStr(): String =
     LocalDate.now().format(DateTimeFormatter.ofPattern("EEE, MMM d"))
