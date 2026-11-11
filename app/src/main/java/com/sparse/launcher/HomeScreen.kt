@@ -22,9 +22,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.input.pointer.PointerEventPass
-import androidx.compose.ui.input.pointer.PointerInputChange
-import androidx.compose.ui.input.pointer.changedToUp
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.platform.LocalContext
@@ -118,68 +115,68 @@ fun HomeScreen(vm: LauncherViewModel) {
             .pointerInput(theme.swipeLeftPackage, theme.swipeRightPackage) {
                 var lastTapMs = 0L
                 awaitEachGesture {
+                    // Main pass fires AFTER children — so if a child (app label) consumed
+                    // the down, down.isConsumed will be true here.
                     val down = awaitFirstDown(requireUnconsumed = false)
-                    down.consume()
-                    val downMs = System.currentTimeMillis()
+                    // Do NOT consume — let children handle their own taps.
                     var drag = Offset.Zero
+                    var released = false
 
-                    // Collect pointer movement until released, with long-press timeout
-                    val upEvent = withTimeoutOrNull(600L) {
-                        var up: PointerInputChange? = null
-                        while (up == null) {
-                            val event = awaitPointerEvent(PointerEventPass.Initial)
+                    // Phase 1: collect movement until release, with long-press timeout.
+                    val timedOut = withTimeoutOrNull(600L) {
+                        while (true) {
+                            val event = awaitPointerEvent()
                             val c = event.changes.firstOrNull { it.id == down.id } ?: break
                             drag += c.positionChange()
-                            c.consume()
-                            if (!c.pressed) up = c
-                            // Exit the timeout early once we have clear drag movement
+                            if (!c.pressed) { released = true; break }
+                            // Break early once drag is unambiguous — no need to wait for timeout
                             if (drag.getDistance() > viewConfiguration.touchSlop * 3) break
                         }
-                        up
+                    }
+                    val longPress = timedOut == null && !released &&
+                        drag.getDistance() < viewConfiguration.touchSlop
+
+                    // Phase 2: if still pressed after early exit, collect the rest.
+                    if (!released && !longPress) {
+                        while (true) {
+                            val event = awaitPointerEvent()
+                            val c = event.changes.firstOrNull { it.id == down.id } ?: break
+                            drag += c.positionChange()
+                            if (!c.pressed) { released = true; break }
+                        }
                     }
 
+                    val adx = abs(drag.x)
+                    val ady = abs(drag.y)
                     when {
-                        upEvent == null && drag.getDistance() < viewConfiguration.touchSlop -> {
-                            // Long press — no significant movement before 600ms
-                            vm.navigate(Screen.Settings)
-                            // drain remaining events
-                            do {
-                                val e = awaitPointerEvent(PointerEventPass.Initial)
-                                e.changes.forEach { it.consume() }
-                            } while (e.changes.any { it.id == down.id && it.pressed })
+                        longPress -> {
+                            if (!down.isConsumed) vm.navigate(Screen.Settings)
+                            // drain until release
+                            while (true) {
+                                val e = awaitPointerEvent()
+                                if (e.changes.none { it.id == down.id && it.pressed }) break
+                            }
+                        }
+                        ady >= 80f && ady >= adx * 2f -> {
+                            if (drag.y < 0f) vm.navigate(Screen.Drawer)
+                            else expandNotifications(ctx)
+                        }
+                        adx >= 100f && adx >= ady * 2f -> {
+                            if (drag.x < 0f) theme.swipeLeftPackage?.let { vm.launchByPackage(it) }
+                            else theme.swipeRightPackage?.let { vm.launchByPackage(it) }
                         }
                         else -> {
-                            // If still pressed (drag escaped the timeout), collect the rest
-                            if (upEvent == null) {
-                                while (true) {
-                                    val e = awaitPointerEvent(PointerEventPass.Initial)
-                                    val c = e.changes.firstOrNull { it.id == down.id } ?: break
-                                    drag += c.positionChange()
-                                    c.consume()
-                                    if (!c.pressed) break
+                            // Tap on empty space only (child consumed = app tap, skip)
+                            if (!down.isConsumed) {
+                                val now = System.currentTimeMillis()
+                                if (now - lastTapMs < 500L) {
+                                    tryLockScreen(ctx)
+                                    lastTapMs = 0L
+                                } else {
+                                    lastTapMs = now
                                 }
-                            }
-                            val adx = abs(drag.x)
-                            val ady = abs(drag.y)
-                            when {
-                                ady >= 80f && ady >= adx * 2f -> {
-                                    if (drag.y < 0f) vm.navigate(Screen.Drawer)
-                                    else expandNotifications(ctx)
-                                }
-                                adx >= 100f && adx >= ady * 2f -> {
-                                    if (drag.x < 0f) theme.swipeLeftPackage?.let { vm.launchByPackage(it) }
-                                    else theme.swipeRightPackage?.let { vm.launchByPackage(it) }
-                                }
-                                else -> {
-                                    // Tap — check for double tap
-                                    val now = System.currentTimeMillis()
-                                    if (now - lastTapMs < 500L) {
-                                        tryLockScreen(ctx)
-                                        lastTapMs = 0L
-                                    } else {
-                                        lastTapMs = now
-                                    }
-                                }
+                            } else {
+                                lastTapMs = 0L
                             }
                         }
                     }
