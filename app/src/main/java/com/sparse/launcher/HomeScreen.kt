@@ -2,7 +2,10 @@ package com.sparse.launcher
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.app.admin.DevicePolicyManager
+import android.content.ComponentName
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.location.LocationManager
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -11,6 +14,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -20,6 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.TextUnit
@@ -106,6 +111,12 @@ fun HomeScreen(vm: LauncherViewModel) {
     Box(
         modifier = Modifier
             .fillMaxSize()
+            .pointerInput(Unit) {
+                detectTapGestures(
+                    onDoubleTap = { tryLockScreen(ctx) },
+                    onLongPress = { vm.navigate(Screen.Settings) },
+                )
+            }
             .pointerInput(theme.swipeLeftPackage, theme.swipeRightPackage) {
                 var dragAccum = Offset.Zero
                 detectDragGestures(
@@ -391,6 +402,22 @@ private fun getLastLocation(ctx: Context): Pair<Double, Double>? {
         .mapNotNull { runCatching { lm.getLastKnownLocation(it) }.getOrNull() }
         .maxByOrNull { it.time }
         ?.let { it.latitude to it.longitude }
+}
+
+private fun tryLockScreen(ctx: Context) {
+    val dpm = ctx.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+    val admin = ComponentName(ctx, SparseDeviceAdmin::class.java)
+    if (dpm.isAdminActive(admin)) {
+        dpm.lockNow()
+    } else {
+        ctx.startActivity(
+            Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN)
+                .putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, admin)
+                .putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION,
+                    "Allows double-tap on home screen to lock the screen")
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        )
+    }
 }
 
 private fun expandNotifications(ctx: Context) {
