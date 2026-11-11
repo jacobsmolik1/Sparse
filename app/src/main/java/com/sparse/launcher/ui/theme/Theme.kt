@@ -9,6 +9,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 
 val BG_COLORS = listOf(
+    // Dark
     Color(0xFF000000),  // AMOLED
     Color(0xFF101010),  // Graphite
     Color(0xFF1C1C1C),  // Charcoal
@@ -25,6 +26,24 @@ val BG_COLORS = listOf(
     Color(0xFF0D0800),  // Amber
     Color(0xFF1E0D0D),  // Maroon
     Color(0xFF1A1A00),  // Olive
+    // Medium
+    Color(0xFF2C3E50),  // Denim
+    Color(0xFF2D4A3E),  // Pine
+    Color(0xFF4A2D4A),  // Grape
+    Color(0xFF5D4037),  // Walnut
+    Color(0xFF4A4A4A),  // Stone
+    Color(0xFF3E4A2C),  // Moss
+    Color(0xFF4A3D2D),  // Caramel
+    Color(0xFF2D3A4A),  // Slate
+    // Light
+    Color(0xFF7F8C8D),  // Cement
+    Color(0xFF8D7F6E),  // Sand
+    Color(0xFF7F8D80),  // Sage
+    Color(0xFFE8E4DC),  // Parchment
+    Color(0xFFDCE4E8),  // Ice
+    Color(0xFFE8DCE0),  // Blush
+    Color(0xFFE4E8DC),  // Linen
+    Color(0xFFE8E0D0),  // Cream
 )
 
 val BG_COLOR_NAMES = listOf(
@@ -32,6 +51,10 @@ val BG_COLOR_NAMES = listOf(
     "Navy", "Indigo", "Forest", "CRT",
     "Teal", "Abyss", "Plum", "Violet",
     "Espresso", "Amber", "Maroon", "Olive",
+    "Denim", "Pine", "Grape", "Walnut",
+    "Stone", "Moss", "Caramel", "Slate",
+    "Cement", "Sand", "Sage", "Parchment",
+    "Ice", "Blush", "Linen", "Cream",
 )
 
 val TEXT_COLORS = listOf(
@@ -53,12 +76,22 @@ val TEXT_COLORS = listOf(
     Color(0xFFFFB000),  // Amber
     Color(0xFF00E5FF),  // Cyan
     Color(0xFFFF6B6B),  // Red
+    // Dark (for light backgrounds)
+    Color(0xFF1A1A1A),  // Ink
+    Color(0xFF2C2C2C),  // Charcoal
+    Color(0xFF3D2B1F),  // Espresso
+    Color(0xFF1F3D2B),  // Dark Green
+    Color(0xFF1F2B3D),  // Dark Blue
+    Color(0xFF3D1F2B),  // Dark Red
+    Color(0xFF2B1F3D),  // Dark Purple
+    Color(0xFF5C4033),  // Brown
 )
 
 val TEXT_COLOR_NAMES = listOf(
     "White", "Silver", "Cream", "Sage", "Rose", "Sky", "Lavender",
     "Mint", "Peach", "Gold", "Warm", "Coral",
     "Matrix", "Neon", "Phosphor", "Amber", "Cyan", "Red",
+    "Ink", "Charcoal", "Espresso", "Dark Green", "Dark Blue", "Dark Red", "Dark Purple", "Brown",
 )
 
 val LocalSparseFont = compositionLocalOf<FontFamily> { FontFamily.SansSerif }
