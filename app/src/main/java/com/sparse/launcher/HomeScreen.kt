@@ -172,7 +172,12 @@ fun HomeScreen(vm: LauncherViewModel) {
                         fontFamily = font,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(top = 4.dp),
+                            .padding(top = 4.dp)
+                            .then(
+                                if (theme.calendarTapPackage != null)
+                                    Modifier.clickable { vm.launchByPackage(theme.calendarTapPackage!!) }
+                                else Modifier
+                            ),
                     )
                 }
                 if (theme.showWeather) {
