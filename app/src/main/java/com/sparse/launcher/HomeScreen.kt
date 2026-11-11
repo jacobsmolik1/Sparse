@@ -13,8 +13,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -23,7 +23,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -40,7 +39,6 @@ import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import kotlin.math.abs
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.withTimeoutOrNull
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -112,75 +110,45 @@ fun HomeScreen(vm: LauncherViewModel) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .pointerInput(theme.swipeLeftPackage, theme.swipeRightPackage) {
+            // Tap gestures: detectTapGestures uses requireUnconsumed=true by default,
+            // so it only fires when NO child (app label) consumed the down event.
+            .pointerInput(Unit) {
                 var lastTapMs = 0L
-                awaitEachGesture {
-                    // Main pass fires AFTER children — so if a child (app label) consumed
-                    // the down, down.isConsumed will be true here.
-                    val down = awaitFirstDown(requireUnconsumed = false)
-                    // Do NOT consume — let children handle their own taps.
-                    var drag = Offset.Zero
-                    var released = false
-
-                    // Phase 1: collect movement until release, with long-press timeout.
-                    val timedOut = withTimeoutOrNull(600L) {
-                        while (true) {
-                            val event = awaitPointerEvent()
-                            val c = event.changes.firstOrNull { it.id == down.id } ?: break
-                            drag += c.positionChange()
-                            if (!c.pressed) { released = true; break }
-                            // Break early once drag is unambiguous — no need to wait for timeout
-                            if (drag.getDistance() > viewConfiguration.touchSlop * 3) break
+                detectTapGestures(
+                    onLongPress = { vm.navigate(Screen.Settings) },
+                    onTap = {
+                        val now = System.currentTimeMillis()
+                        if (now - lastTapMs < 500L) {
+                            tryLockScreen(ctx)
+                            lastTapMs = 0L
+                        } else {
+                            lastTapMs = now
                         }
-                    }
-                    val longPress = timedOut == null && !released &&
-                        drag.getDistance() < viewConfiguration.touchSlop
-
-                    // Phase 2: if still pressed after early exit, collect the rest.
-                    if (!released && !longPress) {
-                        while (true) {
-                            val event = awaitPointerEvent()
-                            val c = event.changes.firstOrNull { it.id == down.id } ?: break
-                            drag += c.positionChange()
-                            if (!c.pressed) { released = true; break }
-                        }
-                    }
-
-                    val adx = abs(drag.x)
-                    val ady = abs(drag.y)
-                    when {
-                        longPress -> {
-                            if (!down.isConsumed) vm.navigate(Screen.Settings)
-                            // drain until release
-                            while (true) {
-                                val e = awaitPointerEvent()
-                                if (e.changes.none { it.id == down.id && it.pressed }) break
+                    },
+                )
+            }
+            // Swipe gestures
+            .pointerInput(theme.swipeLeftPackage, theme.swipeRightPackage) {
+                var dragAccum = Offset.Zero
+                detectDragGestures(
+                    onDragStart = { dragAccum = Offset.Zero },
+                    onDrag = { _, amount -> dragAccum += amount },
+                    onDragEnd = {
+                        val dx = dragAccum.x; val dy = dragAccum.y
+                        val adx = abs(dx); val ady = abs(dy)
+                        when {
+                            ady >= 80f && ady >= adx * 2f -> {
+                                if (dy < 0f) vm.navigate(Screen.Drawer)
+                                else expandNotifications(ctx)
+                            }
+                            adx >= 100f && adx >= ady * 2f -> {
+                                if (dx < 0f) theme.swipeLeftPackage?.let { vm.launchByPackage(it) }
+                                else theme.swipeRightPackage?.let { vm.launchByPackage(it) }
                             }
                         }
-                        ady >= 80f && ady >= adx * 2f -> {
-                            if (drag.y < 0f) vm.navigate(Screen.Drawer)
-                            else expandNotifications(ctx)
-                        }
-                        adx >= 100f && adx >= ady * 2f -> {
-                            if (drag.x < 0f) theme.swipeLeftPackage?.let { vm.launchByPackage(it) }
-                            else theme.swipeRightPackage?.let { vm.launchByPackage(it) }
-                        }
-                        else -> {
-                            // Tap on empty space only (child consumed = app tap, skip)
-                            if (!down.isConsumed) {
-                                val now = System.currentTimeMillis()
-                                if (now - lastTapMs < 500L) {
-                                    tryLockScreen(ctx)
-                                    lastTapMs = 0L
-                                } else {
-                                    lastTapMs = now
-                                }
-                            } else {
-                                lastTapMs = 0L
-                            }
-                        }
-                    }
-                }
+                    },
+                    onDragCancel = { dragAccum = Offset.Zero },
+                )
             }
     ) {
         Column(
@@ -444,14 +412,6 @@ private fun tryLockScreen(ctx: Context) {
     val admin = ComponentName(ctx, SparseDeviceAdmin::class.java)
     if (dpm.isAdminActive(admin)) {
         dpm.lockNow()
-    } else {
-        ctx.startActivity(
-            Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN)
-                .putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, admin)
-                .putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION,
-                    "Allows double-tap on home screen to lock the screen")
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        )
     }
 }
 
