@@ -6,6 +6,7 @@ import android.media.session.MediaController
 import android.media.session.MediaSessionManager
 import android.media.session.PlaybackState
 import android.service.notification.NotificationListenerService
+import android.service.notification.StatusBarNotification
 
 class MediaListenerService : NotificationListenerService(),
     MediaSessionManager.OnActiveSessionsChangedListener {
@@ -13,7 +14,21 @@ class MediaListenerService : NotificationListenerService(),
     private var mediaSessionManager: MediaSessionManager? = null
     private val activeControllers = mutableListOf<Pair<MediaController, MediaController.Callback>>()
 
+    override fun onNotificationPosted(sbn: StatusBarNotification) {
+        NotificationStore.post(sbn.packageName)
+    }
+
+    override fun onNotificationRemoved(sbn: StatusBarNotification) {
+        // Only clear the dot if no remaining notifications from this package
+        val remaining = activeNotifications?.any {
+            it.packageName == sbn.packageName && it.id != sbn.id
+        } ?: false
+        if (!remaining) NotificationStore.remove(sbn.packageName)
+    }
+
     override fun onListenerConnected() {
+        // Seed initial notification set
+        activeNotifications?.forEach { NotificationStore.post(it.packageName) }
         try {
             val msm = getSystemService(MEDIA_SESSION_SERVICE) as MediaSessionManager
             mediaSessionManager = msm
@@ -27,6 +42,7 @@ class MediaListenerService : NotificationListenerService(),
         mediaSessionManager?.removeOnActiveSessionsChangedListener(this)
         clearCallbacks()
         NowPlayingStore.update(null)
+        NotificationStore.clear()
     }
 
     override fun onActiveSessionsChanged(controllers: MutableList<MediaController>?) {

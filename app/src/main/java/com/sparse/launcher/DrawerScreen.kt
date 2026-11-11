@@ -27,6 +27,7 @@ import com.sparse.launcher.ui.theme.dimContent
 fun DrawerScreen(vm: LauncherViewModel) {
     val query by vm.drawerQuery.collectAsState()
     val apps = remember(query, vm.allApps.collectAsState().value) { vm.filteredApps() }
+    val notifPackages by NotificationStore.active.collectAsState()
     val focusRequester = remember { FocusRequester() }
     val font = LocalSparseFont.current
     val bodySp = when (vm.themeState.collectAsState().value.bodySize) {
@@ -91,7 +92,7 @@ fun DrawerScreen(vm: LauncherViewModel) {
         LazyColumn(verticalArrangement = Arrangement.spacedBy(18.dp)) {
             items(apps, key = { it.packageName }) { app ->
                 Text(
-                    text = app.displayLabel,
+                    text = if (app.packageName in notifPackages) "${app.displayLabel} ·" else app.displayLabel,
                     fontSize = bodySp,
                     color = MaterialTheme.colorScheme.onBackground,
                     fontFamily = font,

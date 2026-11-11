@@ -44,6 +44,7 @@ fun HomeScreen(vm: LauncherViewModel) {
     val theme by vm.themeState.collectAsState()
     val weatherState by vm.weatherState.collectAsState()
     val calendarEvents by vm.calendarEvents.collectAsState()
+    val notifPackages by NotificationStore.active.collectAsState()
     val font = LocalSparseFont.current
 
     var time by remember { mutableStateOf(currentTimeStr(theme.clock24h)) }
@@ -226,7 +227,7 @@ fun HomeScreen(vm: LauncherViewModel) {
             ) {
                 pinnedApps.forEach { app ->
                     Text(
-                        text = app.displayLabel,
+                        text = if (app.packageName in notifPackages) "${app.displayLabel} ·" else app.displayLabel,
                         fontSize = bodySp,
                         color = MaterialTheme.colorScheme.onBackground,
                         textAlign = composeTextAlign,

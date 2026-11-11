@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Three text-row lines of different widths — represents a sparse text launcher -->
+    <path
+        android:fillColor="#EEEEEE"
+        android:pathData="M24,36 L84,36 Q87,36 87,39.5 L87,43.5 Q87,47 84,47 L24,47 Q21,47 21,43.5 L21,39.5 Q21,36 24,36 Z"/>
+
+    <path
+        android:fillColor="#EEEEEE"
+        android:pathData="M24,52 L54,52 Q57,52 57,55.5 L57,59.5 Q57,63 54,63 L24,63 Q21,63 21,59.5 L21,55.5 Q21,52 24,52 Z"/>
+
+    <path
+        android:fillColor="#EEEEEE"
+        android:pathData="M24,68 L71,68 Q74,68 74,71.5 L74,75.5 Q74,79 71,79 L24,79 Q21,79 21,75.5 L21,71.5 Q21,68 24,68 Z"/>
+
+</vector>

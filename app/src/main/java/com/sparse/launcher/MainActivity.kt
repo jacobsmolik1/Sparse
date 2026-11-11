@@ -1,19 +1,24 @@
 package com.sparse.launcher
 
 import android.app.Activity
+import android.app.admin.DevicePolicyManager
+import android.content.ComponentName
+import android.content.Context
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontFamily
 import androidx.core.view.WindowCompat
@@ -23,6 +28,22 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.sparse.launcher.ui.theme.BG_COLORS
 import com.sparse.launcher.ui.theme.TEXT_COLORS
 import com.sparse.launcher.ui.theme.SparseTheme
+
+private fun tryLockScreen(ctx: Context) {
+    val dpm = ctx.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+    val admin = ComponentName(ctx, SparseDeviceAdmin::class.java)
+    if (dpm.isAdminActive(admin)) {
+        dpm.lockNow()
+    } else {
+        ctx.startActivity(
+            Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN)
+                .putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, admin)
+                .putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION,
+                    "Allows double-tap on home screen to lock the screen")
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        )
+    }
+}
 
 class MainActivity : ComponentActivity() {
 
@@ -35,12 +56,12 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun SparseApp() {
     val vm: LauncherViewModel = viewModel()
     val screen by vm.screen.collectAsState()
     val theme by vm.themeState.collectAsState()
+    val ctx = LocalContext.current
 
     val view = LocalView.current
     SideEffect {
@@ -74,14 +95,14 @@ private fun SparseApp() {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .run {
-                        if (screen == Screen.Home) {
-                            combinedClickable(
-                                onClick = {},
-                                onLongClick = { vm.navigate(Screen.Settings) },
+                    .then(
+                        if (screen == Screen.Home) Modifier.pointerInput(Unit) {
+                            detectTapGestures(
+                                onDoubleTap = { tryLockScreen(ctx) },
+                                onLongPress = { vm.navigate(Screen.Settings) },
                             )
-                        } else this
-                    }
+                        } else Modifier
+                    )
             ) {
                 when (val s = screen) {
                     is Screen.Home -> HomeScreen(vm)
