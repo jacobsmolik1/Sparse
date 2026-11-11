@@ -13,8 +13,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -22,9 +22,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.PointerInputChange
+import androidx.compose.ui.input.pointer.changedToUp
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.TextUnit
@@ -40,6 +43,7 @@ import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import kotlin.math.abs
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withTimeoutOrNull
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -111,41 +115,75 @@ fun HomeScreen(vm: LauncherViewModel) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .pointerInput(Unit) {
-                detectTapGestures(
-                    onDoubleTap = { tryLockScreen(ctx) },
-                    onLongPress = { vm.navigate(Screen.Settings) },
-                )
-            }
             .pointerInput(theme.swipeLeftPackage, theme.swipeRightPackage) {
-                var dragAccum = Offset.Zero
-                detectDragGestures(
-                    onDragStart = { dragAccum = Offset.Zero },
-                    onDrag = { _, dragAmount ->
-                        dragAccum += dragAmount
-                    },
-                    onDragEnd = {
-                        val dx = dragAccum.x
-                        val dy = dragAccum.y
-                        val adx = abs(dx)
-                        val ady = abs(dy)
-                        if (ady >= 80f && ady >= adx * 2f) {
-                            // Vertical swipe
-                            if (dy < 0f) vm.navigate(Screen.Drawer)
-                            else expandNotifications(ctx)
-                        } else if (adx >= 100f && adx >= ady * 2f) {
-                            // Horizontal swipe
-                            if (dx < 0f) {
-                                val pkg = theme.swipeLeftPackage
-                                if (pkg != null) vm.launchByPackage(pkg)
-                            } else {
-                                val pkg = theme.swipeRightPackage
-                                if (pkg != null) vm.launchByPackage(pkg)
+                var lastTapMs = 0L
+                awaitEachGesture {
+                    val down = awaitFirstDown(requireUnconsumed = false)
+                    down.consume()
+                    val downMs = System.currentTimeMillis()
+                    var drag = Offset.Zero
+
+                    // Collect pointer movement until released, with long-press timeout
+                    val upEvent = withTimeoutOrNull(600L) {
+                        var up: PointerInputChange? = null
+                        while (up == null) {
+                            val event = awaitPointerEvent(PointerEventPass.Initial)
+                            val c = event.changes.firstOrNull { it.id == down.id } ?: break
+                            drag += c.positionChange()
+                            c.consume()
+                            if (!c.pressed) up = c
+                            // Exit the timeout early once we have clear drag movement
+                            if (drag.getDistance() > viewConfiguration.touchSlop * 3) break
+                        }
+                        up
+                    }
+
+                    when {
+                        upEvent == null && drag.getDistance() < viewConfiguration.touchSlop -> {
+                            // Long press — no significant movement before 600ms
+                            vm.navigate(Screen.Settings)
+                            // drain remaining events
+                            do {
+                                val e = awaitPointerEvent(PointerEventPass.Initial)
+                                e.changes.forEach { it.consume() }
+                            } while (e.changes.any { it.id == down.id && it.pressed })
+                        }
+                        else -> {
+                            // If still pressed (drag escaped the timeout), collect the rest
+                            if (upEvent == null) {
+                                while (true) {
+                                    val e = awaitPointerEvent(PointerEventPass.Initial)
+                                    val c = e.changes.firstOrNull { it.id == down.id } ?: break
+                                    drag += c.positionChange()
+                                    c.consume()
+                                    if (!c.pressed) break
+                                }
+                            }
+                            val adx = abs(drag.x)
+                            val ady = abs(drag.y)
+                            when {
+                                ady >= 80f && ady >= adx * 2f -> {
+                                    if (drag.y < 0f) vm.navigate(Screen.Drawer)
+                                    else expandNotifications(ctx)
+                                }
+                                adx >= 100f && adx >= ady * 2f -> {
+                                    if (drag.x < 0f) theme.swipeLeftPackage?.let { vm.launchByPackage(it) }
+                                    else theme.swipeRightPackage?.let { vm.launchByPackage(it) }
+                                }
+                                else -> {
+                                    // Tap — check for double tap
+                                    val now = System.currentTimeMillis()
+                                    if (now - lastTapMs < 500L) {
+                                        tryLockScreen(ctx)
+                                        lastTapMs = 0L
+                                    } else {
+                                        lastTapMs = now
+                                    }
+                                }
                             }
                         }
-                    },
-                    onDragCancel = { dragAccum = Offset.Zero },
-                )
+                    }
+                }
             }
     ) {
         Column(

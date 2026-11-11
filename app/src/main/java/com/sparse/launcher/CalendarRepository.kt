@@ -6,6 +6,7 @@ import android.content.pm.PackageManager
 import android.provider.CalendarContract
 import androidx.core.content.ContextCompat
 import java.time.Instant
+import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -30,12 +31,16 @@ object CalendarRepository {
         if (ContextCompat.checkSelfPermission(ctx, Manifest.permission.READ_CALENDAR)
             != PackageManager.PERMISSION_GRANTED) return emptyList()
 
+        val zone = ZoneId.systemDefault()
         val now = System.currentTimeMillis()
-        val end = now + 7L * 24 * 60 * 60 * 1000 // next 7 days
+        val endOfDay = LocalDate.now().plusDays(1)
+            .atStartOfDay(zone).toInstant().toEpochMilli()
 
+        // Query from start of today so all-day events (which begin at midnight) are included
+        val startOfDay = LocalDate.now().atStartOfDay(zone).toInstant().toEpochMilli()
         val uri = CalendarContract.Instances.CONTENT_URI.buildUpon()
-            .appendPath(now.toString())
-            .appendPath(end.toString())
+            .appendPath(startOfDay.toString())
+            .appendPath(endOfDay.toString())
             .build()
 
         val projection = arrayOf(
@@ -57,13 +62,17 @@ object CalendarRepository {
             while (it.moveToNext() && events.size < maxEvents) {
                 val title = it.getString(1) ?: continue
                 if (title.isBlank()) continue
+                val endMs = it.getLong(3)
+                // Skip events that have already ended (but keep all-day events)
+                val allDay = it.getInt(4) != 0
+                if (!allDay && endMs < now) continue
                 events.add(
                     CalendarEvent(
                         id = it.getLong(0),
                         title = title,
                         startMs = it.getLong(2),
-                        endMs = it.getLong(3),
-                        allDay = it.getInt(4) != 0,
+                        endMs = endMs,
+                        allDay = allDay,
                     )
                 )
             }
