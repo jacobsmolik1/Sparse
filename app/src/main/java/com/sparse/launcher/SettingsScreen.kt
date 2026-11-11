@@ -94,6 +94,30 @@ fun SettingsScreen(vm: LauncherViewModel) {
             }
         }
 
+        // Clock size
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            SectionLabel("clock size")
+            Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
+                listOf("small", "medium", "large").forEach { opt ->
+                    ClockFormatOption(label = opt, selected = theme.clockSize == opt) {
+                        vm.setClockSize(opt)
+                    }
+                }
+            }
+        }
+
+        // Body text size
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            SectionLabel("text size")
+            Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
+                listOf("small", "medium", "large").forEach { opt ->
+                    ClockFormatOption(label = opt, selected = theme.bodySize == opt) {
+                        vm.setBodySize(opt)
+                    }
+                }
+            }
+        }
+
         // Text alignment
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             SectionLabel("text alignment")

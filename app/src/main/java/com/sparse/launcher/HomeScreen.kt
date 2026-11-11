@@ -20,6 +20,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
@@ -52,6 +53,8 @@ fun HomeScreen(vm: LauncherViewModel) {
     val horizAlign = theme.textAlign.toColumnAlign()
     val composeTextAlign = theme.textAlign.toTextAlign()
     val vertArrangement = theme.verticalLayout.toArrangement()
+    val clockSp = theme.clockSize.toClockSp()
+    val bodySp = theme.bodySize.toBodySp()
 
     // Permission launcher — used only on first ask
     val permLauncher = rememberLauncherForActivityResult(
@@ -113,23 +116,23 @@ fun HomeScreen(vm: LauncherViewModel) {
             Column(horizontalAlignment = horizAlign) {
                 Text(
                     text = time,
-                    fontSize = 72.sp,
+                    fontSize = clockSp,
                     fontWeight = FontWeight.Light,
                     color = MaterialTheme.colorScheme.onBackground,
-                    lineHeight = 76.sp,
+                    lineHeight = clockSp * 1.05,
                     textAlign = composeTextAlign,
                     modifier = Modifier.fillMaxWidth(),
                 )
                 Text(
                     text = date,
-                    fontSize = 16.sp,
+                    fontSize = bodySp * 0.88f,
                     color = MaterialTheme.dimContent,
                     textAlign = composeTextAlign,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(top = 4.dp),
                 )
-                WeatherLine(weatherState, composeTextAlign)
+                WeatherLine(weatherState, composeTextAlign, bodySp)
             }
 
             // Gap between clock block and apps (not needed for spread — SpaceBetween handles it)
@@ -145,7 +148,7 @@ fun HomeScreen(vm: LauncherViewModel) {
                 pinnedApps.forEach { app ->
                     Text(
                         text = app.displayLabel,
-                        fontSize = 18.sp,
+                        fontSize = bodySp,
                         color = MaterialTheme.colorScheme.onBackground,
                         textAlign = composeTextAlign,
                         modifier = Modifier
@@ -163,12 +166,12 @@ fun HomeScreen(vm: LauncherViewModel) {
 }
 
 @Composable
-private fun WeatherLine(state: WeatherState, textAlign: TextAlign) {
+private fun WeatherLine(state: WeatherState, textAlign: TextAlign, bodySp: TextUnit) {
     if (state is WeatherState.Ready) {
         val unit = if (state.isFahrenheit) "°F" else "°C"
         Text(
             text = "${state.temp}$unit  ${state.condition}",
-            fontSize = 15.sp,
+            fontSize = bodySp * 0.83f,
             color = MaterialTheme.dimContent,
             textAlign = textAlign,
             modifier = Modifier
@@ -176,6 +179,18 @@ private fun WeatherLine(state: WeatherState, textAlign: TextAlign) {
                 .padding(top = 6.dp),
         )
     }
+}
+
+private fun String.toClockSp(): TextUnit = when (this) {
+    "small" -> 52.sp
+    "large" -> 92.sp
+    else -> 72.sp
+}
+
+private fun String.toBodySp(): TextUnit = when (this) {
+    "small" -> 15.sp
+    "large" -> 22.sp
+    else -> 18.sp
 }
 
 private fun String.toColumnAlign(): Alignment.Horizontal = when (this) {

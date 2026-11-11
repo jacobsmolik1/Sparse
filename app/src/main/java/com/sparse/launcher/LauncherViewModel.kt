@@ -30,6 +30,8 @@ data class ThemeState(
     val useFahrenheit: Boolean,
     val textAlign: String,
     val verticalLayout: String,
+    val clockSize: String,
+    val bodySize: String,
 )
 
 sealed class WeatherState {
@@ -64,6 +66,8 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             useFahrenheit = prefs.useFahrenheit,
             textAlign = prefs.textAlign,
             verticalLayout = prefs.verticalLayout,
+            clockSize = prefs.clockSize,
+            bodySize = prefs.bodySize,
         )
     )
     val themeState: StateFlow<ThemeState> = _themeState.asStateFlow()
@@ -215,6 +219,16 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     fun setVerticalLayout(value: String) {
         prefs.verticalLayout = value
         _themeState.value = _themeState.value.copy(verticalLayout = value)
+    }
+
+    fun setClockSize(value: String) {
+        prefs.clockSize = value
+        _themeState.value = _themeState.value.copy(clockSize = value)
+    }
+
+    fun setBodySize(value: String) {
+        prefs.bodySize = value
+        _themeState.value = _themeState.value.copy(bodySize = value)
     }
 
     fun updateLocation(lat: Double, lon: Double) {

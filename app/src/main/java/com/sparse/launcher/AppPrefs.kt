@@ -46,6 +46,16 @@ class AppPrefs(context: Context) {
         get() = prefs.getString(KEY_VERTICAL_LAYOUT, "spread") ?: "spread"
         set(value) = prefs.edit().putString(KEY_VERTICAL_LAYOUT, value).apply()
 
+    // "small" | "medium" | "large"
+    var clockSize: String
+        get() = prefs.getString(KEY_CLOCK_SIZE, "medium") ?: "medium"
+        set(value) = prefs.edit().putString(KEY_CLOCK_SIZE, value).apply()
+
+    // "small" | "medium" | "large"
+    var bodySize: String
+        get() = prefs.getString(KEY_BODY_SIZE, "medium") ?: "medium"
+        set(value) = prefs.edit().putString(KEY_BODY_SIZE, value).apply()
+
     var bgColorIndex: Int
         get() = prefs.getInt(KEY_BG_COLOR, 0)
         set(value) = prefs.edit().putInt(KEY_BG_COLOR, value).apply()
@@ -77,5 +87,7 @@ class AppPrefs(context: Context) {
         private const val KEY_TEMP_UNIT = "temp_fahrenheit"
         private const val KEY_TEXT_ALIGN = "text_align"
         private const val KEY_VERTICAL_LAYOUT = "vertical_layout"
+        private const val KEY_CLOCK_SIZE = "clock_size"
+        private const val KEY_BODY_SIZE = "body_size"
     }
 }

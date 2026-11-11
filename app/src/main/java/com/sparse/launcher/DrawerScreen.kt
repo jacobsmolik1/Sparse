@@ -27,6 +27,11 @@ fun DrawerScreen(vm: LauncherViewModel) {
     val query by vm.drawerQuery.collectAsState()
     val apps = remember(query, vm.allApps.collectAsState().value) { vm.filteredApps() }
     val focusRequester = remember { FocusRequester() }
+    val bodySp = when (vm.themeState.collectAsState().value.bodySize) {
+        "small" -> 15.sp
+        "large" -> 22.sp
+        else -> 18.sp
+    }
 
     LaunchedEffect(Unit) {
         vm.setDrawerQuery("")
@@ -48,7 +53,7 @@ fun DrawerScreen(vm: LauncherViewModel) {
             onValueChange = { vm.setDrawerQuery(it) },
             singleLine = true,
             textStyle = TextStyle(
-                fontSize = 20.sp,
+                fontSize = bodySp,
                 color = MaterialTheme.colorScheme.onBackground,
                 fontWeight = FontWeight.Light,
             ),
@@ -61,7 +66,7 @@ fun DrawerScreen(vm: LauncherViewModel) {
                 if (query.isEmpty()) {
                     Text(
                         "search apps",
-                        fontSize = 20.sp,
+                        fontSize = bodySp,
                         color = MaterialTheme.dimContent,
                         fontWeight = FontWeight.Light,
                     )
@@ -76,7 +81,7 @@ fun DrawerScreen(vm: LauncherViewModel) {
             items(apps, key = { it.packageName }) { app ->
                 Text(
                     text = app.displayLabel,
-                    fontSize = 18.sp,
+                    fontSize = bodySp,
                     color = MaterialTheme.colorScheme.onBackground,
                     modifier = Modifier
                         .fillMaxWidth()
