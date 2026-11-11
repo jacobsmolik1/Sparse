@@ -93,6 +93,7 @@ fun SettingsScreen(vm: LauncherViewModel) {
                 "weather" to theme.showWeather,
                 "now playing" to theme.showNowPlaying,
                 "calendar" to theme.showCalendar,
+                "status bar" to !theme.hideStatusBar,
             ).forEach { (label, checked) ->
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -114,6 +115,7 @@ fun SettingsScreen(vm: LauncherViewModel) {
                                 "weather" -> vm.setShowWeather(v)
                                 "now playing" -> vm.setShowNowPlaying(v)
                                 "calendar" -> vm.setShowCalendar(v)
+                                "status bar" -> vm.setHideStatusBar(!v)
                             }
                         },
                     )

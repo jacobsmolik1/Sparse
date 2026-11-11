@@ -1,5 +1,6 @@
 package com.sparse.launcher
 
+import android.app.Activity
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
@@ -13,7 +14,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontFamily
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.sparse.launcher.ui.theme.BG_COLORS
 import com.sparse.launcher.ui.theme.TEXT_COLORS
@@ -36,6 +41,18 @@ private fun SparseApp() {
     val vm: LauncherViewModel = viewModel()
     val screen by vm.screen.collectAsState()
     val theme by vm.themeState.collectAsState()
+
+    val view = LocalView.current
+    SideEffect {
+        val window = (view.context as Activity).window
+        val ctrl = WindowInsetsControllerCompat(window, view)
+        if (theme.hideStatusBar) {
+            ctrl.hide(WindowInsetsCompat.Type.statusBars())
+            ctrl.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        } else {
+            ctrl.show(WindowInsetsCompat.Type.statusBars())
+        }
+    }
 
     val fontFamily = when (theme.fontFamily) {
         "serif" -> FontFamily.Serif

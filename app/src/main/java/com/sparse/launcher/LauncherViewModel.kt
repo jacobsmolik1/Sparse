@@ -49,6 +49,7 @@ data class ThemeState(
     val musicTapPackage: String?,
     val showCalendar: Boolean,
     val calendarTapPackage: String?,
+    val hideStatusBar: Boolean,
 )
 
 sealed class WeatherState {
@@ -97,6 +98,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             musicTapPackage = prefs.musicTapPackage,
             showCalendar = prefs.showCalendar,
             calendarTapPackage = prefs.calendarTapPackage,
+            hideStatusBar = prefs.hideStatusBar,
         )
     )
     val themeState: StateFlow<ThemeState> = _themeState.asStateFlow()
@@ -248,6 +250,11 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             "musicTap" -> { prefs.musicTapPackage = pkg; _themeState.value = _themeState.value.copy(musicTapPackage = pkg) }
             "calendarTap" -> { prefs.calendarTapPackage = pkg; _themeState.value = _themeState.value.copy(calendarTapPackage = pkg) }
         }
+    }
+
+    fun setHideStatusBar(v: Boolean) {
+        prefs.hideStatusBar = v
+        _themeState.value = _themeState.value.copy(hideStatusBar = v)
     }
 
     fun setShowCalendar(v: Boolean) {

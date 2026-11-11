@@ -94,6 +94,10 @@ class AppPrefs(context: Context) {
         get() = prefs.getBoolean(KEY_SHOW_NOW_PLAYING, true)
         set(value) = prefs.edit().putBoolean(KEY_SHOW_NOW_PLAYING, value).apply()
 
+    var hideStatusBar: Boolean
+        get() = prefs.getBoolean(KEY_HIDE_STATUS_BAR, false)
+        set(value) = prefs.edit().putBoolean(KEY_HIDE_STATUS_BAR, value).apply()
+
     var fontFamily: String
         get() = prefs.getString(KEY_FONT_FAMILY, "default") ?: "default"
         set(value) = prefs.edit().putString(KEY_FONT_FAMILY, value).apply()
@@ -155,6 +159,7 @@ class AppPrefs(context: Context) {
         private const val KEY_SHOW_WEATHER = "show_weather"
         private const val KEY_SHOW_NOW_PLAYING = "show_now_playing"
         private const val KEY_FONT_FAMILY = "font_family"
+        private const val KEY_HIDE_STATUS_BAR = "hide_status_bar"
         private const val KEY_CLOCK_TAP = "clock_tap_package"
         private const val KEY_WEATHER_TAP = "weather_tap_package"
         private const val KEY_MUSIC_TAP = "music_tap_package"
