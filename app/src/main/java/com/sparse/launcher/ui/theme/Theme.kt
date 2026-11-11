@@ -34,11 +34,18 @@ val TEXT_COLORS = listOf(
     Color(0xFFE0D4A0),  // Gold
     Color(0xFFFFF5E0),  // Warm
     Color(0xFFF4B8A8),  // Coral
+    Color(0xFF00FF41),  // Matrix
+    Color(0xFF39FF14),  // Neon
+    Color(0xFF33CC33),  // Phosphor
+    Color(0xFFFFB000),  // Amber
+    Color(0xFF00E5FF),  // Cyan
+    Color(0xFFFF6B6B),  // Red
 )
 
 val TEXT_COLOR_NAMES = listOf(
     "White", "Silver", "Cream", "Sage", "Rose", "Sky", "Lavender",
-    "Mint", "Peach", "Gold", "Warm", "Coral"
+    "Mint", "Peach", "Gold", "Warm", "Coral",
+    "Matrix", "Neon", "Phosphor", "Amber", "Cyan", "Red",
 )
 
 val LocalSparseFont = compositionLocalOf<FontFamily> { FontFamily.SansSerif }

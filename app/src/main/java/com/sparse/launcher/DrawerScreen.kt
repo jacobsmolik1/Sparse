@@ -40,6 +40,13 @@ fun DrawerScreen(vm: LauncherViewModel) {
         focusRequester.requestFocus()
     }
 
+    LaunchedEffect(apps) {
+        if (query.isNotBlank() && apps.size == 1) {
+            vm.setDrawerQuery("")
+            vm.launchApp(apps[0])
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
