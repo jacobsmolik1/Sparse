@@ -8,6 +8,7 @@ import android.location.LocationManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
@@ -42,6 +43,7 @@ fun HomeScreen(vm: LauncherViewModel) {
     val pinnedApps by vm.pinnedApps.collectAsState()
     val theme by vm.themeState.collectAsState()
     val weatherState by vm.weatherState.collectAsState()
+    val calendarEvents by vm.calendarEvents.collectAsState()
     val font = LocalSparseFont.current
 
     var time by remember { mutableStateOf(currentTimeStr(theme.clock24h)) }
@@ -97,6 +99,7 @@ fun HomeScreen(vm: LauncherViewModel) {
                 vm.refreshWeather()
             }
         }
+        vm.refreshCalendar(ctx)
     }
 
     Box(
@@ -151,7 +154,13 @@ fun HomeScreen(vm: LauncherViewModel) {
                         lineHeight = clockSp * 1.05,
                         textAlign = composeTextAlign,
                         fontFamily = font,
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .then(
+                                if (theme.clockTapPackage != null)
+                                    Modifier.clickable { vm.launchByPackage(theme.clockTapPackage!!) }
+                                else Modifier
+                            ),
                     )
                 }
                 if (theme.showDate) {
@@ -167,10 +176,36 @@ fun HomeScreen(vm: LauncherViewModel) {
                     )
                 }
                 if (theme.showWeather) {
-                    WeatherLine(weatherState, composeTextAlign, bodySp, font)
+                    WeatherLine(
+                        state = weatherState,
+                        textAlign = composeTextAlign,
+                        bodySp = bodySp,
+                        font = font,
+                        tapPackage = theme.weatherTapPackage,
+                        onTap = { pkg -> vm.launchByPackage(pkg) },
+                    )
                 }
                 if (theme.showNowPlaying) {
-                    NowPlayingLine(ctx, composeTextAlign, bodySp, font)
+                    NowPlayingLine(
+                        ctx = ctx,
+                        textAlign = composeTextAlign,
+                        bodySp = bodySp,
+                        font = font,
+                        tapPackage = theme.musicTapPackage,
+                        onTap = { pkg -> vm.launchByPackage(pkg) },
+                    )
+                }
+                if (theme.showCalendar && calendarEvents.isNotEmpty()) {
+                    CalendarBlock(
+                        events = calendarEvents,
+                        clock24h = theme.clock24h,
+                        textAlign = composeTextAlign,
+                        horizAlign = horizAlign,
+                        bodySp = bodySp,
+                        font = font,
+                        tapPackage = theme.calendarTapPackage,
+                        onTap = { pkg -> vm.launchByPackage(pkg) },
+                    )
                 }
             }
 
@@ -211,6 +246,8 @@ private fun WeatherLine(
     textAlign: TextAlign,
     bodySp: TextUnit,
     font: androidx.compose.ui.text.font.FontFamily,
+    tapPackage: String?,
+    onTap: (String) -> Unit,
 ) {
     if (state is WeatherState.Ready) {
         val unit = if (state.isFahrenheit) "°F" else "°C"
@@ -222,7 +259,8 @@ private fun WeatherLine(
             fontFamily = font,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 6.dp),
+                .padding(top = 6.dp)
+                .then(if (tapPackage != null) Modifier.clickable { onTap(tapPackage) } else Modifier),
         )
     }
 }
@@ -233,6 +271,8 @@ private fun NowPlayingLine(
     textAlign: TextAlign,
     bodySp: TextUnit,
     font: androidx.compose.ui.text.font.FontFamily,
+    tapPackage: String?,
+    onTap: (String) -> Unit,
 ) {
     val info by NowPlayingStore.nowPlaying.collectAsState()
     val isEnabled = remember { NowPlayingStore.isListenerEnabled(ctx) }
@@ -251,8 +291,43 @@ private fun NowPlayingLine(
             fontFamily = font,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 4.dp),
+                .padding(top = 4.dp)
+                .then(if (tapPackage != null) Modifier.clickable { onTap(tapPackage) } else Modifier),
         )
+    }
+}
+
+@Composable
+private fun CalendarBlock(
+    events: List<CalendarEvent>,
+    clock24h: Boolean,
+    textAlign: TextAlign,
+    horizAlign: Alignment.Horizontal,
+    bodySp: TextUnit,
+    font: androidx.compose.ui.text.font.FontFamily,
+    tapPackage: String?,
+    onTap: (String) -> Unit,
+) {
+    val clickMod = if (tapPackage != null) Modifier.clickable { onTap(tapPackage) } else Modifier
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 10.dp)
+            .then(clickMod),
+        horizontalAlignment = horizAlign,
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        events.forEach { event ->
+            val label = "${event.timeLabel(clock24h)}  ${event.title}"
+            Text(
+                text = label,
+                fontSize = bodySp * 0.83f,
+                color = MaterialTheme.dimContent,
+                textAlign = textAlign,
+                fontFamily = font,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
     }
 }
 

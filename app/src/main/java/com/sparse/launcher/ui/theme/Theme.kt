@@ -9,7 +9,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 
 val BG_COLORS = listOf(
-    Color(0xFF0A0A0A),  // Black
+    Color(0xFF000000),  // AMOLED
     Color(0xFF1C1C1C),  // Charcoal
     Color(0xFF0E1628),  // Navy
     Color(0xFF0D1A13),  // Forest
@@ -19,7 +19,7 @@ val BG_COLORS = listOf(
     Color(0xFF0D1A1A),  // Teal
 )
 
-val BG_COLOR_NAMES = listOf("Black", "Charcoal", "Navy", "Forest", "Espresso", "Ash", "Plum", "Teal")
+val BG_COLOR_NAMES = listOf("AMOLED", "Charcoal", "Navy", "Forest", "Espresso", "Ash", "Plum", "Teal")
 
 val TEXT_COLORS = listOf(
     Color(0xFFEEEEEE),  // White

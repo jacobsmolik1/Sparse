@@ -75,6 +75,7 @@ private fun SparseApp() {
                     is Screen.Gate -> GateScreen(vm, s.app, s.reason)
                     is Screen.AppSettings -> AppSettingsScreen(vm, s.app)
                     is Screen.PickSwipeApp -> PickSwipeAppScreen(vm, s.direction)
+                    is Screen.PickApp -> PickAppScreen(vm, s.target)
                 }
             }
         }

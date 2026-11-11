@@ -25,6 +25,7 @@ sealed class Screen {
     data class Gate(val app: AppInfo, val reason: GateReason = GateReason.Mindful) : Screen()
     data class AppSettings(val app: AppInfo) : Screen()
     data class PickSwipeApp(val direction: String) : Screen()
+    data class PickApp(val target: String) : Screen()
 }
 
 data class ThemeState(
@@ -43,6 +44,11 @@ data class ThemeState(
     val fontFamily: String,
     val swipeLeftPackage: String?,
     val swipeRightPackage: String?,
+    val clockTapPackage: String?,
+    val weatherTapPackage: String?,
+    val musicTapPackage: String?,
+    val showCalendar: Boolean,
+    val calendarTapPackage: String?,
 )
 
 sealed class WeatherState {
@@ -86,12 +92,20 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             fontFamily = prefs.fontFamily,
             swipeLeftPackage = prefs.swipeLeftPackage,
             swipeRightPackage = prefs.swipeRightPackage,
+            clockTapPackage = prefs.clockTapPackage,
+            weatherTapPackage = prefs.weatherTapPackage,
+            musicTapPackage = prefs.musicTapPackage,
+            showCalendar = prefs.showCalendar,
+            calendarTapPackage = prefs.calendarTapPackage,
         )
     )
     val themeState: StateFlow<ThemeState> = _themeState.asStateFlow()
 
     private val _weatherState = MutableStateFlow<WeatherState>(WeatherState.Idle)
     val weatherState: StateFlow<WeatherState> = _weatherState.asStateFlow()
+
+    private val _calendarEvents = MutableStateFlow<List<CalendarEvent>>(emptyList())
+    val calendarEvents: StateFlow<List<CalendarEvent>> = _calendarEvents.asStateFlow()
 
     private var lastLat = Double.NaN
     private var lastLon = Double.NaN
@@ -222,13 +236,28 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         prefs.hiddenApps = current
     }
 
-    fun setSwipeApp(direction: String, pkg: String?) {
-        if (direction == "left") {
-            prefs.swipeLeftPackage = pkg
-            _themeState.value = _themeState.value.copy(swipeLeftPackage = pkg)
-        } else {
-            prefs.swipeRightPackage = pkg
-            _themeState.value = _themeState.value.copy(swipeRightPackage = pkg)
+    fun setSwipeApp(direction: String, pkg: String?) =
+        setTapApp(if (direction == "left") "swipeLeft" else "swipeRight", pkg)
+
+    fun setTapApp(target: String, pkg: String?) {
+        when (target) {
+            "swipeLeft" -> { prefs.swipeLeftPackage = pkg; _themeState.value = _themeState.value.copy(swipeLeftPackage = pkg) }
+            "swipeRight" -> { prefs.swipeRightPackage = pkg; _themeState.value = _themeState.value.copy(swipeRightPackage = pkg) }
+            "clockTap" -> { prefs.clockTapPackage = pkg; _themeState.value = _themeState.value.copy(clockTapPackage = pkg) }
+            "weatherTap" -> { prefs.weatherTapPackage = pkg; _themeState.value = _themeState.value.copy(weatherTapPackage = pkg) }
+            "musicTap" -> { prefs.musicTapPackage = pkg; _themeState.value = _themeState.value.copy(musicTapPackage = pkg) }
+            "calendarTap" -> { prefs.calendarTapPackage = pkg; _themeState.value = _themeState.value.copy(calendarTapPackage = pkg) }
+        }
+    }
+
+    fun setShowCalendar(v: Boolean) {
+        prefs.showCalendar = v
+        _themeState.value = _themeState.value.copy(showCalendar = v)
+    }
+
+    fun refreshCalendar(ctx: android.content.Context) {
+        viewModelScope.launch(Dispatchers.IO) {
+            _calendarEvents.value = CalendarRepository.upcoming(ctx)
         }
     }
 

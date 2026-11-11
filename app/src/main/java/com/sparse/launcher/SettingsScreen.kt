@@ -92,6 +92,7 @@ fun SettingsScreen(vm: LauncherViewModel) {
                 "date" to theme.showDate,
                 "weather" to theme.showWeather,
                 "now playing" to theme.showNowPlaying,
+                "calendar" to theme.showCalendar,
             ).forEach { (label, checked) ->
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -112,6 +113,7 @@ fun SettingsScreen(vm: LauncherViewModel) {
                                 "date" -> vm.setShowDate(v)
                                 "weather" -> vm.setShowWeather(v)
                                 "now playing" -> vm.setShowNowPlaying(v)
+                                "calendar" -> vm.setShowCalendar(v)
                             }
                         },
                     )
@@ -203,6 +205,39 @@ fun SettingsScreen(vm: LauncherViewModel) {
                 color = MaterialTheme.dimContent,
                 fontFamily = font,
             )
+        }
+
+        // Tap targets section
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            SectionLabel("tap actions", font)
+            val allAppsVal = vm.allApps.collectAsState().value
+            listOf(
+                "clock" to (allAppsVal.find { it.packageName == theme.clockTapPackage }?.displayLabel ?: "none"),
+                "weather" to (allAppsVal.find { it.packageName == theme.weatherTapPackage }?.displayLabel ?: "none"),
+                "music" to (allAppsVal.find { it.packageName == theme.musicTapPackage }?.displayLabel ?: "none"),
+                "calendar" to (allAppsVal.find { it.packageName == theme.calendarTapPackage }?.displayLabel ?: "none"),
+            ).forEach { (label, appLabel) ->
+                val target = when (label) {
+                    "clock" -> "clockTap"
+                    "weather" -> "weatherTap"
+                    "music" -> "musicTap"
+                    else -> "calendarTap"
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(text = label, fontSize = 16.sp, color = MaterialTheme.colorScheme.onBackground, fontFamily = font)
+                    Text(
+                        text = appLabel,
+                        fontSize = 16.sp,
+                        color = MaterialTheme.dimContent,
+                        fontFamily = font,
+                        modifier = Modifier.clickable { vm.navigate(Screen.PickApp(target)) },
+                    )
+                }
+            }
         }
 
         // Swipe gestures section

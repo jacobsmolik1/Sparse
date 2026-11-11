@@ -98,6 +98,30 @@ class AppPrefs(context: Context) {
         get() = prefs.getString(KEY_FONT_FAMILY, "default") ?: "default"
         set(value) = prefs.edit().putString(KEY_FONT_FAMILY, value).apply()
 
+    var clockTapPackage: String?
+        get() = prefs.getString(KEY_CLOCK_TAP, null)
+        set(value) = if (value == null) prefs.edit().remove(KEY_CLOCK_TAP).apply()
+                     else prefs.edit().putString(KEY_CLOCK_TAP, value).apply()
+
+    var weatherTapPackage: String?
+        get() = prefs.getString(KEY_WEATHER_TAP, null)
+        set(value) = if (value == null) prefs.edit().remove(KEY_WEATHER_TAP).apply()
+                     else prefs.edit().putString(KEY_WEATHER_TAP, value).apply()
+
+    var musicTapPackage: String?
+        get() = prefs.getString(KEY_MUSIC_TAP, null)
+        set(value) = if (value == null) prefs.edit().remove(KEY_MUSIC_TAP).apply()
+                     else prefs.edit().putString(KEY_MUSIC_TAP, value).apply()
+
+    var showCalendar: Boolean
+        get() = prefs.getBoolean(KEY_SHOW_CALENDAR, true)
+        set(value) = prefs.edit().putBoolean(KEY_SHOW_CALENDAR, value).apply()
+
+    var calendarTapPackage: String?
+        get() = prefs.getString(KEY_CALENDAR_TAP, null)
+        set(value) = if (value == null) prefs.edit().remove(KEY_CALENDAR_TAP).apply()
+                     else prefs.edit().putString(KEY_CALENDAR_TAP, value).apply()
+
     fun getDailyLimit(packageName: String): Int =
         prefs.getInt("limit_$packageName", 0)
 
@@ -131,5 +155,10 @@ class AppPrefs(context: Context) {
         private const val KEY_SHOW_WEATHER = "show_weather"
         private const val KEY_SHOW_NOW_PLAYING = "show_now_playing"
         private const val KEY_FONT_FAMILY = "font_family"
+        private const val KEY_CLOCK_TAP = "clock_tap_package"
+        private const val KEY_WEATHER_TAP = "weather_tap_package"
+        private const val KEY_MUSIC_TAP = "music_tap_package"
+        private const val KEY_SHOW_CALENDAR = "show_calendar"
+        private const val KEY_CALENDAR_TAP = "calendar_tap_package"
     }
 }
