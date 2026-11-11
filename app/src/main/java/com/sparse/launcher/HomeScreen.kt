@@ -9,13 +9,14 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -26,10 +27,12 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
+import com.sparse.launcher.ui.theme.LocalSparseFont
 import com.sparse.launcher.ui.theme.dimContent
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
+import kotlin.math.abs
 import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -39,6 +42,7 @@ fun HomeScreen(vm: LauncherViewModel) {
     val pinnedApps by vm.pinnedApps.collectAsState()
     val theme by vm.themeState.collectAsState()
     val weatherState by vm.weatherState.collectAsState()
+    val font = LocalSparseFont.current
 
     var time by remember { mutableStateOf(currentTimeStr(theme.clock24h)) }
     var date by remember { mutableStateOf(currentDateStr()) }
@@ -98,11 +102,35 @@ fun HomeScreen(vm: LauncherViewModel) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .pointerInput(Unit) {
-                detectVerticalDragGestures { _, dragAmount ->
-                    if (dragAmount < -40f) vm.navigate(Screen.Drawer)
-                    else if (dragAmount > 40f) expandNotifications(ctx)
-                }
+            .pointerInput(theme.swipeLeftPackage, theme.swipeRightPackage) {
+                var dragAccum = Offset.Zero
+                detectDragGestures(
+                    onDragStart = { dragAccum = Offset.Zero },
+                    onDrag = { _, dragAmount ->
+                        dragAccum += dragAmount
+                    },
+                    onDragEnd = {
+                        val dx = dragAccum.x
+                        val dy = dragAccum.y
+                        val adx = abs(dx)
+                        val ady = abs(dy)
+                        if (ady >= 80f && ady >= adx * 2f) {
+                            // Vertical swipe
+                            if (dy < 0f) vm.navigate(Screen.Drawer)
+                            else expandNotifications(ctx)
+                        } else if (adx >= 100f && adx >= ady * 2f) {
+                            // Horizontal swipe
+                            if (dx < 0f) {
+                                val pkg = theme.swipeLeftPackage
+                                if (pkg != null) vm.launchByPackage(pkg)
+                            } else {
+                                val pkg = theme.swipeRightPackage
+                                if (pkg != null) vm.launchByPackage(pkg)
+                            }
+                        }
+                    },
+                    onDragCancel = { dragAccum = Offset.Zero },
+                )
             }
     ) {
         Column(
@@ -112,27 +140,38 @@ fun HomeScreen(vm: LauncherViewModel) {
             verticalArrangement = vertArrangement,
             horizontalAlignment = horizAlign,
         ) {
-            // Clock / date / weather block
+            // Clock / date / weather / now playing block
             Column(horizontalAlignment = horizAlign) {
-                Text(
-                    text = time,
-                    fontSize = clockSp,
-                    fontWeight = FontWeight.Light,
-                    color = MaterialTheme.colorScheme.onBackground,
-                    lineHeight = clockSp * 1.05,
-                    textAlign = composeTextAlign,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                Text(
-                    text = date,
-                    fontSize = bodySp * 0.88f,
-                    color = MaterialTheme.dimContent,
-                    textAlign = composeTextAlign,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 4.dp),
-                )
-                WeatherLine(weatherState, composeTextAlign, bodySp)
+                if (theme.showClock) {
+                    Text(
+                        text = time,
+                        fontSize = clockSp,
+                        fontWeight = FontWeight.Light,
+                        color = MaterialTheme.colorScheme.onBackground,
+                        lineHeight = clockSp * 1.05,
+                        textAlign = composeTextAlign,
+                        fontFamily = font,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+                if (theme.showDate) {
+                    Text(
+                        text = date,
+                        fontSize = bodySp * 0.88f,
+                        color = MaterialTheme.dimContent,
+                        textAlign = composeTextAlign,
+                        fontFamily = font,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 4.dp),
+                    )
+                }
+                if (theme.showWeather) {
+                    WeatherLine(weatherState, composeTextAlign, bodySp, font)
+                }
+                if (theme.showNowPlaying) {
+                    NowPlayingLine(ctx, composeTextAlign, bodySp, font)
+                }
             }
 
             // Gap between clock block and apps (not needed for spread — SpaceBetween handles it)
@@ -151,6 +190,7 @@ fun HomeScreen(vm: LauncherViewModel) {
                         fontSize = bodySp,
                         color = MaterialTheme.colorScheme.onBackground,
                         textAlign = composeTextAlign,
+                        fontFamily = font,
                         modifier = Modifier
                             .fillMaxWidth()
                             .combinedClickable(
@@ -166,7 +206,12 @@ fun HomeScreen(vm: LauncherViewModel) {
 }
 
 @Composable
-private fun WeatherLine(state: WeatherState, textAlign: TextAlign, bodySp: TextUnit) {
+private fun WeatherLine(
+    state: WeatherState,
+    textAlign: TextAlign,
+    bodySp: TextUnit,
+    font: androidx.compose.ui.text.font.FontFamily,
+) {
     if (state is WeatherState.Ready) {
         val unit = if (state.isFahrenheit) "°F" else "°C"
         Text(
@@ -174,9 +219,39 @@ private fun WeatherLine(state: WeatherState, textAlign: TextAlign, bodySp: TextU
             fontSize = bodySp * 0.83f,
             color = MaterialTheme.dimContent,
             textAlign = textAlign,
+            fontFamily = font,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 6.dp),
+        )
+    }
+}
+
+@Composable
+private fun NowPlayingLine(
+    ctx: android.content.Context,
+    textAlign: TextAlign,
+    bodySp: TextUnit,
+    font: androidx.compose.ui.text.font.FontFamily,
+) {
+    val info by NowPlayingStore.nowPlaying.collectAsState()
+    val isEnabled = remember { NowPlayingStore.isListenerEnabled(ctx) }
+    if (isEnabled && info != null) {
+        val nowInfo = info!!
+        val displayText = if (nowInfo.artist.isNotBlank()) {
+            "${nowInfo.title}  ·  ${nowInfo.artist}"
+        } else {
+            nowInfo.title
+        }
+        Text(
+            text = displayText,
+            fontSize = bodySp * 0.83f,
+            color = MaterialTheme.dimContent,
+            textAlign = textAlign,
+            fontFamily = font,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 4.dp),
         )
     }
 }

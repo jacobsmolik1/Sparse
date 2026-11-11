@@ -19,6 +19,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.sparse.launcher.ui.theme.LocalSparseFont
 import com.sparse.launcher.ui.theme.dimContent
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -27,6 +28,7 @@ fun DrawerScreen(vm: LauncherViewModel) {
     val query by vm.drawerQuery.collectAsState()
     val apps = remember(query, vm.allApps.collectAsState().value) { vm.filteredApps() }
     val focusRequester = remember { FocusRequester() }
+    val font = LocalSparseFont.current
     val bodySp = when (vm.themeState.collectAsState().value.bodySize) {
         "small" -> 15.sp
         "large" -> 22.sp
@@ -56,6 +58,7 @@ fun DrawerScreen(vm: LauncherViewModel) {
                 fontSize = bodySp,
                 color = MaterialTheme.colorScheme.onBackground,
                 fontWeight = FontWeight.Light,
+                fontFamily = font,
             ),
             cursorBrush = SolidColor(MaterialTheme.colorScheme.onBackground),
             modifier = Modifier
@@ -65,10 +68,11 @@ fun DrawerScreen(vm: LauncherViewModel) {
             decorationBox = { inner ->
                 if (query.isEmpty()) {
                     Text(
-                        "search apps",
+                        text = "search apps",
                         fontSize = bodySp,
                         color = MaterialTheme.dimContent,
                         fontWeight = FontWeight.Light,
+                        fontFamily = font,
                     )
                 }
                 inner()
@@ -83,6 +87,7 @@ fun DrawerScreen(vm: LauncherViewModel) {
                     text = app.displayLabel,
                     fontSize = bodySp,
                     color = MaterialTheme.colorScheme.onBackground,
+                    fontFamily = font,
                     modifier = Modifier
                         .fillMaxWidth()
                         .combinedClickable(

@@ -1,5 +1,6 @@
 package com.sparse.launcher
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.MaterialTheme
@@ -14,17 +15,21 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.sparse.launcher.ui.theme.LocalSparseFont
 import com.sparse.launcher.ui.theme.dimContent
 
 @Composable
 fun AppSettingsScreen(vm: LauncherViewModel, app: AppInfo) {
     val prefs = vm.prefs
+    val font = LocalSparseFont.current
     val pinnedApps by vm.pinnedApps.collectAsState()
     val isPinned = pinnedApps.any { it.packageName == app.packageName }
     var isMindful by remember { mutableStateOf(app.packageName in prefs.mindfulApps) }
     var isFocusBlocked by remember { mutableStateOf(app.packageName in prefs.focusBlockedApps) }
+    var isHidden by remember { mutableStateOf(app.packageName in prefs.hiddenApps) }
     var labelText by remember { mutableStateOf(prefs.getCustomLabel(app.packageName) ?: "") }
     val opensToday = remember { vm.usage.getOpensToday(app.packageName) }
+    var dailyLimit by remember { mutableIntStateOf(prefs.getDailyLimit(app.packageName)) }
 
     Column(
         modifier = Modifier
@@ -38,11 +43,13 @@ fun AppSettingsScreen(vm: LauncherViewModel, app: AppInfo) {
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Light,
                 color = MaterialTheme.colorScheme.onBackground,
+                fontFamily = font,
             )
             Text(
                 text = app.packageName,
                 fontSize = 11.sp,
                 color = MaterialTheme.dimContent,
+                fontFamily = font,
                 modifier = Modifier.padding(top = 2.dp),
             )
         }
@@ -52,7 +59,12 @@ fun AppSettingsScreen(vm: LauncherViewModel, app: AppInfo) {
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text("pin to home", fontSize = 16.sp, color = MaterialTheme.colorScheme.onBackground)
+            Text(
+                text = "pin to home",
+                fontSize = 16.sp,
+                color = MaterialTheme.colorScheme.onBackground,
+                fontFamily = font,
+            )
             Switch(
                 checked = isPinned,
                 onCheckedChange = { checked ->
@@ -68,8 +80,18 @@ fun AppSettingsScreen(vm: LauncherViewModel, app: AppInfo) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column {
-                Text("mindful pause", fontSize = 16.sp, color = MaterialTheme.colorScheme.onBackground)
-                Text("3s delay before opening", fontSize = 12.sp, color = MaterialTheme.dimContent)
+                Text(
+                    text = "mindful pause",
+                    fontSize = 16.sp,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    fontFamily = font,
+                )
+                Text(
+                    text = "3s delay before opening",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.dimContent,
+                    fontFamily = font,
+                )
             }
             Switch(
                 checked = isMindful,
@@ -86,8 +108,18 @@ fun AppSettingsScreen(vm: LauncherViewModel, app: AppInfo) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column {
-                Text("block in focus mode", fontSize = 16.sp, color = MaterialTheme.colorScheme.onBackground)
-                Text("blocked when focus is on", fontSize = 12.sp, color = MaterialTheme.dimContent)
+                Text(
+                    text = "block in focus mode",
+                    fontSize = 16.sp,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    fontFamily = font,
+                )
+                Text(
+                    text = "blocked when focus is on",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.dimContent,
+                    fontFamily = font,
+                )
             }
             Switch(
                 checked = isFocusBlocked,
@@ -98,8 +130,83 @@ fun AppSettingsScreen(vm: LauncherViewModel, app: AppInfo) {
             )
         }
 
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = "hidden from drawer",
+                fontSize = 16.sp,
+                color = MaterialTheme.colorScheme.onBackground,
+                fontFamily = font,
+            )
+            Switch(
+                checked = isHidden,
+                onCheckedChange = { checked ->
+                    isHidden = checked
+                    if (checked) vm.hideApp(app.packageName)
+                    else vm.unhideApp(app.packageName)
+                },
+            )
+        }
+
+        // Daily limit row
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = "daily limit",
+                fontSize = 16.sp,
+                color = MaterialTheme.colorScheme.onBackground,
+                fontFamily = font,
+            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Text(
+                    text = "-",
+                    fontSize = 20.sp,
+                    color = if (dailyLimit > 0) MaterialTheme.colorScheme.onBackground else MaterialTheme.dimContent,
+                    fontFamily = font,
+                    modifier = Modifier.clickable {
+                        if (dailyLimit > 0) {
+                            dailyLimit -= 1
+                            prefs.setDailyLimit(app.packageName, dailyLimit)
+                        }
+                    },
+                )
+                Text(
+                    text = if (dailyLimit == 0) "no limit" else "$dailyLimit opens",
+                    fontSize = 14.sp,
+                    color = MaterialTheme.dimContent,
+                    fontFamily = font,
+                )
+                Text(
+                    text = "+",
+                    fontSize = 20.sp,
+                    color = if (dailyLimit < 50) MaterialTheme.colorScheme.onBackground else MaterialTheme.dimContent,
+                    fontFamily = font,
+                    modifier = Modifier.clickable {
+                        if (dailyLimit < 50) {
+                            dailyLimit += 1
+                            prefs.setDailyLimit(app.packageName, dailyLimit)
+                        }
+                    },
+                )
+            }
+        }
+
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text("custom label", fontSize = 14.sp, color = MaterialTheme.dimContent)
+            Text(
+                text = "custom label",
+                fontSize = 14.sp,
+                color = MaterialTheme.dimContent,
+                fontFamily = font,
+            )
             BasicTextField(
                 value = labelText,
                 onValueChange = { labelText = it },
@@ -107,12 +214,18 @@ fun AppSettingsScreen(vm: LauncherViewModel, app: AppInfo) {
                 textStyle = TextStyle(
                     fontSize = 16.sp,
                     color = MaterialTheme.colorScheme.onBackground,
+                    fontFamily = font,
                 ),
                 cursorBrush = SolidColor(MaterialTheme.colorScheme.onBackground),
                 modifier = Modifier.fillMaxWidth(),
                 decorationBox = { inner ->
                     if (labelText.isEmpty()) {
-                        Text(app.label, fontSize = 16.sp, color = MaterialTheme.dimContent)
+                        Text(
+                            text = app.label,
+                            fontSize = 16.sp,
+                            color = MaterialTheme.dimContent,
+                            fontFamily = font,
+                        )
                     }
                     inner()
                 },
@@ -123,6 +236,7 @@ fun AppSettingsScreen(vm: LauncherViewModel, app: AppInfo) {
             text = "opened today: $opensToday",
             fontSize = 14.sp,
             color = MaterialTheme.dimContent,
+            fontFamily = font,
         )
 
         Row(
@@ -130,13 +244,21 @@ fun AppSettingsScreen(vm: LauncherViewModel, app: AppInfo) {
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             TextButton(onClick = { vm.back() }) {
-                Text("cancel", color = MaterialTheme.dimContent)
+                Text(
+                    text = "cancel",
+                    color = MaterialTheme.dimContent,
+                    fontFamily = font,
+                )
             }
             TextButton(onClick = {
                 vm.setCustomLabel(app.packageName, labelText)
                 vm.back()
             }) {
-                Text("save", color = MaterialTheme.colorScheme.onBackground)
+                Text(
+                    text = "save",
+                    color = MaterialTheme.colorScheme.onBackground,
+                    fontFamily = font,
+                )
             }
         }
     }

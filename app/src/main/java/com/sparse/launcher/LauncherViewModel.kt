@@ -14,13 +14,17 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
+enum class GateReason { Mindful, LimitReached, FocusBlock }
+
 sealed class Screen {
     object Home : Screen()
     object Drawer : Screen()
     object Settings : Screen()
     object ManageHomeApps : Screen()
-    data class Gate(val app: AppInfo) : Screen()
+    object HiddenApps : Screen()
+    data class Gate(val app: AppInfo, val reason: GateReason = GateReason.Mindful) : Screen()
     data class AppSettings(val app: AppInfo) : Screen()
+    data class PickSwipeApp(val direction: String) : Screen()
 }
 
 data class ThemeState(
@@ -32,6 +36,13 @@ data class ThemeState(
     val verticalLayout: String,
     val clockSize: String,
     val bodySize: String,
+    val showClock: Boolean,
+    val showDate: Boolean,
+    val showWeather: Boolean,
+    val showNowPlaying: Boolean,
+    val fontFamily: String,
+    val swipeLeftPackage: String?,
+    val swipeRightPackage: String?,
 )
 
 sealed class WeatherState {
@@ -68,6 +79,13 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             verticalLayout = prefs.verticalLayout,
             clockSize = prefs.clockSize,
             bodySize = prefs.bodySize,
+            showClock = prefs.showClock,
+            showDate = prefs.showDate,
+            showWeather = prefs.showWeather,
+            showNowPlaying = prefs.showNowPlaying,
+            fontFamily = prefs.fontFamily,
+            swipeLeftPackage = prefs.swipeLeftPackage,
+            swipeRightPackage = prefs.swipeRightPackage,
         )
     )
     val themeState: StateFlow<ThemeState> = _themeState.asStateFlow()
@@ -117,10 +135,22 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     fun setDrawerQuery(q: String) { _drawerQuery.value = q }
 
     fun launchApp(app: AppInfo) {
-        val isMindful = app.packageName in prefs.mindfulApps
         val isBlocked = prefs.focusModeEnabled && app.packageName in prefs.focusBlockedApps
-        if (isMindful || isBlocked) _screen.value = Screen.Gate(app)
-        else doLaunch(app)
+        if (isBlocked) {
+            _screen.value = Screen.Gate(app, GateReason.FocusBlock)
+            return
+        }
+        val limit = prefs.getDailyLimit(app.packageName)
+        if (limit > 0 && usage.getOpensToday(app.packageName) >= limit) {
+            _screen.value = Screen.Gate(app, GateReason.LimitReached)
+            return
+        }
+        val isMindful = app.packageName in prefs.mindfulApps
+        if (isMindful) {
+            _screen.value = Screen.Gate(app, GateReason.Mindful)
+            return
+        }
+        doLaunch(app)
     }
 
     fun doLaunch(app: AppInfo) {
@@ -180,13 +210,40 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         prefs.focusBlockedApps = current
     }
 
+    fun hideApp(pkg: String) {
+        val current = prefs.hiddenApps.toMutableSet()
+        current.add(pkg)
+        prefs.hiddenApps = current
+    }
+
+    fun unhideApp(pkg: String) {
+        val current = prefs.hiddenApps.toMutableSet()
+        current.remove(pkg)
+        prefs.hiddenApps = current
+    }
+
+    fun setSwipeApp(direction: String, pkg: String?) {
+        if (direction == "left") {
+            prefs.swipeLeftPackage = pkg
+            _themeState.value = _themeState.value.copy(swipeLeftPackage = pkg)
+        } else {
+            prefs.swipeRightPackage = pkg
+            _themeState.value = _themeState.value.copy(swipeRightPackage = pkg)
+        }
+    }
+
+    fun launchByPackage(pkg: String) {
+        val app = _allApps.value.find { it.packageName == pkg } ?: return
+        launchApp(app)
+    }
+
     fun setCustomLabel(packageName: String, label: String) {
         prefs.setCustomLabel(packageName, label)
         loadApps()
     }
 
-    fun setDailyLimit(packageName: String, minutes: Int) {
-        prefs.setDailyLimit(packageName, minutes)
+    fun setDailyLimit(packageName: String, opens: Int) {
+        prefs.setDailyLimit(packageName, opens)
     }
 
     fun setBgColor(index: Int) {
@@ -231,6 +288,31 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         _themeState.value = _themeState.value.copy(bodySize = value)
     }
 
+    fun setShowClock(v: Boolean) {
+        prefs.showClock = v
+        _themeState.value = _themeState.value.copy(showClock = v)
+    }
+
+    fun setShowDate(v: Boolean) {
+        prefs.showDate = v
+        _themeState.value = _themeState.value.copy(showDate = v)
+    }
+
+    fun setShowWeather(v: Boolean) {
+        prefs.showWeather = v
+        _themeState.value = _themeState.value.copy(showWeather = v)
+    }
+
+    fun setShowNowPlaying(v: Boolean) {
+        prefs.showNowPlaying = v
+        _themeState.value = _themeState.value.copy(showNowPlaying = v)
+    }
+
+    fun setFontFamily(v: String) {
+        prefs.fontFamily = v
+        _themeState.value = _themeState.value.copy(fontFamily = v)
+    }
+
     fun updateLocation(lat: Double, lon: Double) {
         lastLat = lat
         lastLon = lon
@@ -266,12 +348,14 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
     fun filteredApps(): List<AppInfo> {
         val q = _drawerQuery.value.trim().lowercase()
-        return if (q.isBlank()) _allApps.value
-        else _allApps.value.filter { it.displayLabel.lowercase().contains(q) }
+        val hidden = prefs.hiddenApps
+        return if (q.isBlank()) _allApps.value.filter { it.packageName !in hidden }
+        else _allApps.value.filter { it.packageName !in hidden && it.displayLabel.lowercase().contains(q) }
     }
 
     fun unpinnedApps(): List<AppInfo> {
         val pinned = prefs.pinnedApps.toSet()
-        return _allApps.value.filter { it.packageName !in pinned }
+        val hidden = prefs.hiddenApps
+        return _allApps.value.filter { it.packageName !in pinned && it.packageName !in hidden }
     }
 }

@@ -64,11 +64,45 @@ class AppPrefs(context: Context) {
         get() = prefs.getInt(KEY_TEXT_COLOR, 0)
         set(value) = prefs.edit().putInt(KEY_TEXT_COLOR, value).apply()
 
+    var hiddenApps: Set<String>
+        get() = prefs.getStringSet(KEY_HIDDEN, emptySet())!!
+        set(value) = prefs.edit().putStringSet(KEY_HIDDEN, value).apply()
+
+    var swipeLeftPackage: String?
+        get() = prefs.getString(KEY_SWIPE_LEFT, null)
+        set(value) = if (value == null) prefs.edit().remove(KEY_SWIPE_LEFT).apply()
+                     else prefs.edit().putString(KEY_SWIPE_LEFT, value).apply()
+
+    var swipeRightPackage: String?
+        get() = prefs.getString(KEY_SWIPE_RIGHT, null)
+        set(value) = if (value == null) prefs.edit().remove(KEY_SWIPE_RIGHT).apply()
+                     else prefs.edit().putString(KEY_SWIPE_RIGHT, value).apply()
+
+    var showClock: Boolean
+        get() = prefs.getBoolean(KEY_SHOW_CLOCK, true)
+        set(value) = prefs.edit().putBoolean(KEY_SHOW_CLOCK, value).apply()
+
+    var showDate: Boolean
+        get() = prefs.getBoolean(KEY_SHOW_DATE, true)
+        set(value) = prefs.edit().putBoolean(KEY_SHOW_DATE, value).apply()
+
+    var showWeather: Boolean
+        get() = prefs.getBoolean(KEY_SHOW_WEATHER, true)
+        set(value) = prefs.edit().putBoolean(KEY_SHOW_WEATHER, value).apply()
+
+    var showNowPlaying: Boolean
+        get() = prefs.getBoolean(KEY_SHOW_NOW_PLAYING, true)
+        set(value) = prefs.edit().putBoolean(KEY_SHOW_NOW_PLAYING, value).apply()
+
+    var fontFamily: String
+        get() = prefs.getString(KEY_FONT_FAMILY, "default") ?: "default"
+        set(value) = prefs.edit().putString(KEY_FONT_FAMILY, value).apply()
+
     fun getDailyLimit(packageName: String): Int =
         prefs.getInt("limit_$packageName", 0)
 
-    fun setDailyLimit(packageName: String, minutes: Int) =
-        prefs.edit().putInt("limit_$packageName", minutes).apply()
+    fun setDailyLimit(packageName: String, opens: Int) =
+        prefs.edit().putInt("limit_$packageName", opens).apply()
 
     fun getCustomLabel(packageName: String): String? =
         prefs.getString("label_$packageName", null)?.takeIf { it.isNotBlank() }
@@ -89,5 +123,13 @@ class AppPrefs(context: Context) {
         private const val KEY_VERTICAL_LAYOUT = "vertical_layout"
         private const val KEY_CLOCK_SIZE = "clock_size"
         private const val KEY_BODY_SIZE = "body_size"
+        private const val KEY_HIDDEN = "hidden_apps"
+        private const val KEY_SWIPE_LEFT = "swipe_left_package"
+        private const val KEY_SWIPE_RIGHT = "swipe_right_package"
+        private const val KEY_SHOW_CLOCK = "show_clock"
+        private const val KEY_SHOW_DATE = "show_date"
+        private const val KEY_SHOW_WEATHER = "show_weather"
+        private const val KEY_SHOW_NOW_PLAYING = "show_now_playing"
+        private const val KEY_FONT_FAMILY = "font_family"
     }
 }
