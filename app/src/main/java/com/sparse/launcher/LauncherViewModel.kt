@@ -385,8 +385,14 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     fun filteredApps(): List<AppInfo> {
         val q = _drawerQuery.value.trim().lowercase()
         val hidden = prefs.hiddenApps
-        return if (q.isBlank()) _allApps.value.filter { it.packageName !in hidden }
-        else _allApps.value.filter { it.packageName !in hidden && it.displayLabel.lowercase().contains(q) }
+        return if (q.isBlank()) {
+            _allApps.value
+                .filter { it.packageName !in hidden }
+                .sortedWith(compareByDescending<AppInfo> { usage.getOpensToday(it.packageName) }
+                    .thenBy { it.displayLabel.lowercase() })
+        } else {
+            _allApps.value.filter { it.packageName !in hidden && it.displayLabel.lowercase().contains(q) }
+        }
     }
 
     fun unpinnedApps(): List<AppInfo> {

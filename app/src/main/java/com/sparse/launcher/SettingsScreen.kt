@@ -413,6 +413,7 @@ fun SettingsScreen(vm: LauncherViewModel) {
             listOf(
                 "swipe up → app drawer",
                 "swipe down → notifications",
+                "double-tap home → sleep",
                 "long press home → settings",
                 "long press app → app settings",
             ).forEach {

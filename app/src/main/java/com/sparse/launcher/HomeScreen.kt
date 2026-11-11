@@ -67,8 +67,8 @@ fun HomeScreen(vm: LauncherViewModel) {
     val clockSp = theme.clockSize.toClockSp()
     val bodySp = theme.bodySize.toBodySp()
 
-    // Permission launcher — used only on first ask
-    val permLauncher = rememberLauncherForActivityResult(
+    // Location permission launcher
+    val locationPermLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { perms ->
         if (perms.values.any { it }) {
@@ -81,7 +81,12 @@ fun HomeScreen(vm: LauncherViewModel) {
         }
     }
 
-    // First-time: request permission or fetch
+    // Calendar permission launcher
+    val calendarPermLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted -> if (granted) vm.refreshCalendar(ctx) }
+
+    // First-time: request permissions or fetch
     LaunchedEffect(Unit) {
         if (hasLocationPermission(ctx)) {
             getLastLocation(ctx)?.let { (lat, lon) ->
@@ -89,10 +94,14 @@ fun HomeScreen(vm: LauncherViewModel) {
                 vm.fetchWeather()
             } ?: vm.setWeatherError()
         } else if (!vm.weatherPermissionDenied) {
-            permLauncher.launch(arrayOf(
+            locationPermLauncher.launch(arrayOf(
                 Manifest.permission.ACCESS_FINE_LOCATION,
                 Manifest.permission.ACCESS_COARSE_LOCATION,
             ))
+        }
+        if (ContextCompat.checkSelfPermission(ctx, Manifest.permission.READ_CALENDAR)
+                != PackageManager.PERMISSION_GRANTED) {
+            calendarPermLauncher.launch(Manifest.permission.READ_CALENDAR)
         }
     }
 
@@ -269,19 +278,30 @@ private fun WeatherLine(
     tapPackage: String?,
     onTap: (String) -> Unit,
 ) {
-    if (state is WeatherState.Ready) {
-        val unit = if (state.isFahrenheit) "°F" else "°C"
-        Text(
-            text = "${state.temp}$unit  ${state.condition}",
-            fontSize = bodySp * 0.83f,
-            color = MaterialTheme.dimContent,
-            textAlign = textAlign,
-            fontFamily = font,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 6.dp)
-                .then(if (tapPackage != null) Modifier.clickable { onTap(tapPackage) } else Modifier),
-        )
+    val baseMod = Modifier.fillMaxWidth().padding(top = 6.dp)
+    when (state) {
+        is WeatherState.Ready -> {
+            val unit = if (state.isFahrenheit) "°F" else "°C"
+            Text(
+                text = "${state.temp}$unit  ${state.condition}",
+                fontSize = bodySp * 0.83f,
+                color = MaterialTheme.dimContent,
+                textAlign = textAlign,
+                fontFamily = font,
+                modifier = baseMod.then(if (tapPackage != null) Modifier.clickable { onTap(tapPackage) } else Modifier),
+            )
+        }
+        is WeatherState.Loading -> {
+            Text(
+                text = "·  ·  ·",
+                fontSize = bodySp * 0.83f,
+                color = MaterialTheme.dimContent,
+                textAlign = textAlign,
+                fontFamily = font,
+                modifier = baseMod,
+            )
+        }
+        else -> {}
     }
 }
 
