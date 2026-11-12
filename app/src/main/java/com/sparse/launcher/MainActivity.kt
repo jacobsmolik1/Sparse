@@ -1,6 +1,7 @@
 package com.sparse.launcher
 
 import android.app.Activity
+import android.content.IntentFilter
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
@@ -25,12 +26,31 @@ import com.sparse.launcher.ui.theme.SparseTheme
 
 class MainActivity : ComponentActivity() {
 
+    val packageReceiver = PackageReceiver()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
             SparseApp()
         }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        val filter = IntentFilter().apply {
+            addAction(android.content.Intent.ACTION_PACKAGE_ADDED)
+            addAction(android.content.Intent.ACTION_PACKAGE_REMOVED)
+            addAction(android.content.Intent.ACTION_PACKAGE_REPLACED)
+            addAction(android.content.Intent.ACTION_PACKAGE_CHANGED)
+            addDataScheme("package")
+        }
+        registerReceiver(packageReceiver, filter)
+    }
+
+    override fun onStop() {
+        super.onStop()
+        unregisterReceiver(packageReceiver)
     }
 }
 
@@ -40,6 +60,13 @@ private fun SparseApp() {
     val screen by vm.screen.collectAsState()
     val theme by vm.themeState.collectAsState()
     val ctx = LocalContext.current
+
+    // Reload app list when packages are installed/removed
+    DisposableEffect(Unit) {
+        val receiver = (ctx as? MainActivity)?.packageReceiver
+        receiver?.onChanged = { vm.loadApps() }
+        onDispose { receiver?.onChanged = null }
+    }
 
     val view = LocalView.current
     SideEffect {
